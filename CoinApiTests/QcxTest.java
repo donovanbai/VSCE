@@ -8,8 +8,8 @@ public class QcxTest {
     public static void main(String[] args) throws Exception {
         String strURL = "https://api.quadrigacx.com/v2/ticker?book="; //base URL
         BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
-		//prompt user if they want to get info for bitcoin(btc) or ether(eth)
-        System.out.println("enter currency");
+		//prompt user if they want to get data for bitcoin or ether
+        System.out.println("enter currency (btc or eth)");
         String curr = stdIn.readLine();
 		strURL += curr + "_cad";
         URL myURL = new URL(strURL);
@@ -27,7 +27,7 @@ public class QcxTest {
                     BufferedReader in = new BufferedReader(new InputStreamReader(myURLConnection.getInputStream()));
 					String inputLine;
 					while ((inputLine = in.readLine()) != null) {
-						System.out.println(inputLine);
+						System.out.println(inputLine); //data is returned in JSON format
 					}
                     System.out.println();
                     in.close();	
