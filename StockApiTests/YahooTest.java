@@ -18,9 +18,10 @@ public class TimerTest {
         strURL = strURL.substring(0, strURL.length()-1); //remove the last "+" from URL
         strURL += "&f=sl1"; //s = symbol and l1 = last trade price.
         URL myURL = new URL(strURL);
-		//scheduled task timer
+
+		//retrieve info every 10 seconds
 		int delay = 0;
-		int period = 10000; //repeats every 10 seconds
+		int period = 10000; 
 		Timer timer = new Timer();
 		timer.scheduleAtFixedRate(new TimerTask() {
             public void run() {
@@ -33,9 +34,9 @@ public class TimerTest {
                     System.out.println();
                     in.close();	
                 } catch (MalformedURLException e) {
-                    System.err.println("MalformedURLException thrown");
+                    System.err.println(e.getMessage());
 				} catch (IOException e) {
-                    System.err.println("IOException thrown");
+                    System.err.println(e.getMessage());
 				}
             }
 		}, delay, period);
