@@ -1,5 +1,5 @@
 August 24-30:
-	- find and test api for real currencies
+	DONE - find and test api for real currencies
 	- simple client GUI (able to create account and purchase stocks)
 	- test saving user data on dynamoDB
 	- setup server to retrieve stock prices every hour(?) and store on dynamoDB
