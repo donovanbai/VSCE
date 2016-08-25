@@ -8,12 +8,12 @@ public class YahooTest {
     public static void main(String[] args) throws Exception {
         String strURL = "https://download.finance.yahoo.com/d/quotes.csv?s="; //base URL
         BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
-        //prompt user for stocks, append them to URL
-        System.out.println("enter stock symbols (eg. aapl) separated by newlines");
-        String stock = stdIn.readLine();
-        while (stock.equals("") == false) { //as long as user enters non-empty line
-            strURL += stock + "+";
-            stock = stdIn.readLine();
+		//prompt user for currency pairs and append to URL
+        System.out.println("enter currency pairs (eg. USDCAD for USD to CAD exchange rate) separated by newlines");
+		String curPair = stdIn.readLine();
+        while (curPair.equals("") == false) { //as long as user enters non-empty line
+            strURL += curPair + "=X+";
+            curPair = stdIn.readLine();
         }
         strURL = strURL.substring(0, strURL.length()-1); //remove the last "+" from URL
         strURL += "&f=sl1"; //s = symbol and l1 = last trade price.
