@@ -6,9 +6,7 @@ public class ClientTest {
  
         //String hostName = args[0];
         //int portNumber = Integer.parseInt(args[1]);
-        //String hostName = "135.0.189.163";
-        //InetAddress address = InetAddress.getByName("135.0.189.163");
-        InetAddress hostIP = InetAddress.getByName("135.0.189.163");
+        InetAddress hostIP = InetAddress.getByName("162.156.144.68");
         int portNumber = 10000;
  
         try (

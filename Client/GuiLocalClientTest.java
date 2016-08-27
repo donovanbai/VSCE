@@ -1,3 +1,11 @@
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
+
 import javafx.application.Application;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
@@ -17,10 +25,19 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
  
-public class Login extends Application {
+public class GuiLocalClientTest extends Application {
     
     @Override
-    public void start(Stage primaryStage) {
+    public void start(Stage primaryStage) throws Exception {
+		//InetAddress hostIP = InetAddress.getByName("162.156.144.68");
+        int portNumber = 10000;
+ 
+		InetAddress hostIP = InetAddress.getLocalHost();
+		Socket echoSocket = new Socket(hostIP, portNumber);
+		PrintWriter out = new PrintWriter(echoSocket.getOutputStream(), true);
+		BufferedReader in = new BufferedReader(new InputStreamReader(echoSocket.getInputStream()));
+		BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
+
         primaryStage.setTitle("JavaFX Welcome");
 		GridPane grid = new GridPane();
 		grid.setAlignment(Pos.CENTER);
@@ -35,14 +52,14 @@ public class Login extends Application {
 		Label userName = new Label("Username:");
 		grid.add(userName, 0, 1);
 	
-		TextField userTextField = new TextField();
-		grid.add(userTextField, 1, 1);
+		TextField userField = new TextField();
+		grid.add(userField, 1, 1);
 		
 		Label pw = new Label("Password:");
 		grid.add(pw, 0, 2);
 		
-		PasswordField pwBox = new PasswordField();
-		grid.add(pwBox, 1, 2);
+		PasswordField pwField = new PasswordField();
+		grid.add(pwField, 1, 2);
 
 		Button signInBtn = new Button("Sign in");
 		Button registerBtn = new Button("Register");
@@ -58,16 +75,40 @@ public class Login extends Application {
 		signInBtn.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent e) {
-				actiontarget.setFill(Color.FIREBRICK);
-				actiontarget.setText("Sign in button pressed");	
+				out.println("sign in");
+				out.println(userField.getText());
+				out.println(pwField.getText());
+				String serverReply = null;
+				try {
+					serverReply = in.readLine();
+				} catch (IOException i) {
+					System.out.println("IOException while getting server reply");
+				}
+				actiontarget.setFill(Color.GREEN);
+				actiontarget.setText(serverReply);
 			}
 		});
 
 		registerBtn.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent e) {
-				actiontarget.setFill(Color.GREEN);
-				actiontarget.setText("Register button pressed");
+				out.println("register");
+				out.println(userField.getText());
+				out.println(pwField.getText());
+				String serverReply = null;
+				try {
+					serverReply = in.readLine();
+				} catch (IOException i) {
+					System.out.println("IOException while getting server reply");
+				}
+				if (serverReply.equals("0")) {
+					actiontarget.setFill(Color.GREEN);
+					actiontarget.setText("registration successful!");
+				}
+				else if (serverReply.equals("1")) {
+					actiontarget.setFill(Color.RED);	
+					actiontarget.setText("username already taken");
+				}
 			}
 		});
 
