@@ -38,26 +38,60 @@ public class Server {
 		BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             ) { 
 		System.out.println(clientSocket.getInetAddress());
-		String inputLine = in.readLine();
-		if (inputLine.equals("register")) {
-                    String username = in.readLine();
-                    String pw = in.readLine();
+                while (true) {
+                    String inputLine = in.readLine();
+                    if (inputLine.equals("register")) {
+                        String username = in.readLine();
+                        String pw = in.readLine();
+                        
+                        if (username.equals("") || pw.equals("")) {
+                            System.out.println("invalid registration: empty username or password");
+                            continue;
+                        }
 
-                    if (table.getItem("username", username) == null) {
-			Item newUser = new Item()
-                            .withPrimaryKey("username", username)
-                            .withString("password", pw);
-			PutItemOutcome outcome = table.putItem(newUser);
-			System.out.println("successfully created new user:");
-			System.out.println("username: " + username);
-			System.out.println("password: " + pw);
-			out.println("0");
+                        if (table.getItem("username", username) == null) {
+                            Item newUser = new Item()
+                                .withPrimaryKey("username", username)
+                                .withString("password", pw);
+                            PutItemOutcome outcome = table.putItem(newUser);
+                            System.out.println("successfully created new user:");
+                            System.out.println("\tusername: " + username);
+                            System.out.println("\tpassword: " + pw);
+                            out.println("0");
+                        }
+                        else {
+                            System.out.println("failed registration: username already exists");
+                            out.println("1");
+                        }
                     }
-                    else {
-			System.out.println("failed registration");
-			out.println("1");
+                    else if (inputLine.equals("sign in")) {
+                        String username = in.readLine();
+                        String pw = in.readLine();
+                        
+                        if (username.equals("") || pw.equals("")) {
+                            System.out.println("invalid sign in: empty username or password");
+                            continue;
+                        }
+
+                        Item user = table.getItem("username", username);
+                        if (user == null) {
+                            System.out.println("failed login: invalid username");
+                            out.println("1");
+                        }
+                        else {
+                            if (!(user.getString("password").equals(pw))) {
+                                System.out.println("failed login: incorrect password");
+                                out.println("2");
+                            }
+                            else {
+                                System.out.println("successful login: " + username);
+                                out.println("0");
+                                //retrieve user data and send to client
+                                
+                            }
+                        }
                     }
-		}
+                }
             } catch (IOException e) {
 		System.out.println(e.getMessage());
             }
