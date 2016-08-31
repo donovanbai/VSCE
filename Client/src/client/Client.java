@@ -1,26 +1,14 @@
 package client;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.net.UnknownHostException;
+import java.io.*;
+import java.net.*;
 
 import javafx.application.Application;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
+import javafx.geometry.*;
 import javafx.scene.Scene;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
-import javafx.scene.text.Text;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextField;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
+import javafx.scene.text.*;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
  
@@ -35,6 +23,7 @@ public class Client extends Application {
     
     static Stage window;
     static Scene login, home;
+    static Text homeText = new Text();
     
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -48,17 +37,11 @@ public class Client extends Application {
         window.show();
     }
 
-    public static void initVars() {
-        try {
-            hostIP = InetAddress.getByName("162.156.144.68");;
-            socket = new Socket(hostIP, portNumber);
-            out = new PrintWriter(socket.getOutputStream(), true);
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        } catch (UnknownHostException e) {
-            System.out.println(e.getMessage());
-        } catch (IOException e) {
-            System.out.println(e.getMessage());          
-        }
+    public static void initVars() throws Exception {
+        hostIP = InetAddress.getByName("162.156.144.68");
+        socket = new Socket(hostIP, portNumber);
+        out = new PrintWriter(socket.getOutputStream(), true);
+        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
     }
     
     public static void setupLogin() {
@@ -107,8 +90,14 @@ public class Client extends Application {
                     System.out.println("IOException while getting server reply");
                 }
                 if (serverReply.equals("0")) {
+                    String bal = null;
+                    try {
+                        bal = in.readLine();
+                    } catch (IOException i) {
+                        System.out.println(i.getMessage());
+                    }
+                    homeText.setText("logged in as " + username + " (balance: " + bal + ")");
                     window.setScene(home);
-                    window.setFullScreen(true);
                 }
                 else if (serverReply.equals("1")) {
                     msg.setFill(Color.RED);
@@ -166,23 +155,56 @@ public class Client extends Application {
         GridPane grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
         grid.setHgap(10);
-        grid.setHgap(10);
+        grid.setVgap(10);
         //grid.setPadding(new Insets(25, 25, 25, 25));
         
-        Text sceneTitle = new Text("HOME SCREEN: NOTHING TO SEE HERE YET");
-        sceneTitle.setFont(Font.font("Tahoma", FontWeight.NORMAL, 40));
-        grid.add(sceneTitle, 0, 0);
+        homeText.setFont(Font.font("Tahoma", FontWeight.NORMAL, 20));
+        grid.add(homeText, 0, 0, 2, 1); 
         
-        Text temp = new Text("PS. MOOSE SAYS HE DOESN'T DESERVE TO GO OUT LOOOOOL");
-        temp.setFont(Font.font("Tahoma", FontWeight.NORMAL, 40));
-        grid.add(temp, 0, 1);
+        Label stockLabel = new Label("search for a stock");
+        grid.add(stockLabel, 0, 5);
+        
+        TextField stockField = new TextField();
+        grid.add(stockField, 1, 5);
         
         Text msg = new Text();
-        grid.add(msg, 0, 3);
+        grid.add(msg, 0, 6);
+        
+        Button stockBtn = new Button("search");
+        stockBtn.setOnAction(e -> {
+            String stock = stockField.getText();
+            
+            if (stock.equals("")) {
+                msg.setFill(Color.RED);
+                msg.setText("field cannot be empty");
+            }
+            else {
+                out.println("search stock");
+                out.println(stock);
+                String serverReply = null;
+                try {
+                    serverReply = in.readLine();
+                } catch (IOException i) {
+                    System.out.println("IOException while getting server reply");
+                }
+                if (serverReply.equals("N/A")) {
+                    msg.setFill(Color.RED);
+                    msg.setText("unknown stock symbol");
+                }
+                else {
+                    msg.setFill(Color.GREEN);
+                    msg.setText("last trade: " + serverReply);
+                }
+            }
+        });
+        grid.add(stockBtn, 2, 5);
         
         Button logoutBtn = new Button("Logout");
-        logoutBtn.setOnAction(e -> window.setScene(login));
-        grid.add(logoutBtn, 0, 2);
+        logoutBtn.setOnAction(e -> {
+            window.setScene(login);
+            out.println("logout");
+        });
+        grid.add(logoutBtn, 2, 7);
       
         home = new Scene(grid, 500, 500);
     }

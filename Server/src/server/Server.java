@@ -1,8 +1,8 @@
 package server;
 
 import java.io.*;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.*;
+import java.util.Map;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.auth.AWSCredentials;
@@ -52,7 +52,8 @@ public class Server {
                         if (table.getItem("username", username) == null) {
                             Item newUser = new Item()
                                 .withPrimaryKey("username", username)
-                                .withString("password", pw);
+                                .withString("password", pw)
+                                .withNumber("balance", 1000000);
                             PutItemOutcome outcome = table.putItem(newUser);
                             System.out.println("successfully created new user:");
                             System.out.println("\tusername: " + username);
@@ -86,8 +87,32 @@ public class Server {
                             else {
                                 System.out.println("successful login: " + username);
                                 out.println("0");
-                                //retrieve user data and send to client
+                                out.println(user.getInt("balance"));
                                 
+                                while (true) {
+                                    inputLine = in.readLine();
+                                    if (inputLine.equals("search stock")) {
+                                        String stock = in.readLine();
+                                        System.out.println("searched for stock: " + stock);
+                                        String strURL = "https://download.finance.yahoo.com/d/quotes.csv?s=" + stock + "&f=l1";
+                                        URL stockURL = new URL(strURL);
+                                        BufferedReader in2 = new BufferedReader(new InputStreamReader(stockURL.openStream()));
+                                        String stockPrice = in2.readLine();
+                                        out.println(stockPrice);
+                                    }
+                                    else if (inputLine.equals("logout")) break;
+                                }
+                                
+                                //retrieve user data and send to client
+                                /*
+                                Iterable<Map.Entry<String, Object>> i = user.attributes();
+                                for (Map.Entry e : i) {
+                                    if (!(e.getKey().equals("username") || e.getKey().equals("password"))) {
+                                        out.println(e.getKey());
+                                        out.println(e.getValue());
+                                    }
+                                }
+                                */
                             }
                         }
                     }

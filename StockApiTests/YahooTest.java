@@ -28,8 +28,11 @@ public class YahooTest {
 				try {
                     BufferedReader in = new BufferedReader(new InputStreamReader(myURL.openStream()));
                     String inputLine;
-                    while ((inputLine = in.readLine()) != null) {           
-                        System.out.println(inputLine); //data is returned in csv format
+                    while ((inputLine = in.readLine()) != null) {   
+						String[] arr = inputLine.split(","); //data is returned in csv format
+						String val = arr[1];        
+						if (val.equals("N/A")) System.out.println("unknown stock symbol");
+                        else System.out.println(val); 
                     }
                     System.out.println();
                     in.close();	
