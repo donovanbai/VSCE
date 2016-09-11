@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.*;
 
 import javafx.application.Application;
+import javafx.concurrent.Task;
 import javafx.geometry.*;
 import javafx.scene.Scene;
 import javafx.scene.text.*;
@@ -23,11 +24,14 @@ public class Client extends Application {
     
     static Stage window;
     static Scene login, home;
+    static Text loginText = new Text();
     static Text homeText = new Text();
+    static String username, pw;
+    
+    static String bal;
     
     @Override
     public void start(Stage primaryStage) throws Exception {
-        initVars();
         setupLogin();
         setupHome();
 
@@ -37,12 +41,120 @@ public class Client extends Application {
         window.show();
     }
 
-    public static void initVars() throws Exception {
-        hostIP = InetAddress.getByName("162.156.144.68");
-        socket = new Socket(hostIP, portNumber);
-        out = new PrintWriter(socket.getOutputStream(), true);
-        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+    public static void login() {
+        Task task = new Task<Integer>() {
+            @Override
+            protected Integer call() {     
+                updateMessage("connecting...");
+                try {
+                    hostIP = InetAddress.getByName("162.156.144.68");
+                    socket = new Socket(hostIP, portNumber);
+                    out = new PrintWriter(socket.getOutputStream(), true);
+                    in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                } catch (Exception e) {
+                    updateMessage("unable to connect to server");
+                    return 1;
+                }
+                out.println("sign in");
+                out.println(username);
+                out.println(pw);
+                String serverReply = null;
+                try {
+                    serverReply = in.readLine();
+                } catch (IOException e) {
+                    updateMessage("IOException while getting server reply");
+                    return 1;
+                }
+                if (serverReply.equals("0")) {
+                    try {
+                        bal = in.readLine();
+                    } catch (IOException e) {
+                        updateMessage("IOException while getting server reply");
+                        return 1;
+                    }
+                    return 0;
+                }
+                else if (serverReply.equals("1")) {
+                    //msg.setFill(Color.RED);
+                    updateMessage("username does not exist");
+                    return 1;
+                }
+                else if (serverReply.equals("2")) {
+                    //msg.setFill(Color.RED);
+                    updateMessage("incorrect password");
+                    return 1;
+                }
+                else {
+                    updateMessage("invalid server reply");
+                    return 1;
+                }
+            }
+        };
+        
+        loginText.textProperty().bind(task.messageProperty());
+        Thread t = new Thread(task);
+        t.start();  
+        task.setOnSucceeded(e -> {
+            int result = (int) task.getValue();
+            if (result == 0) {
+                homeText.setText("logged in as " + username + " (balance: " + bal + ")");
+                window.setScene(home);
+            }
+            loginText.textProperty().unbind();
+        });
     }
+    
+    public static void register() {
+        Task task = new Task<Void>() {
+            @Override
+            protected Void call() {   
+                updateMessage("connecting...");
+                try {
+                    hostIP = InetAddress.getByName("162.156.144.68");
+                    socket = new Socket(hostIP, portNumber);
+                    out = new PrintWriter(socket.getOutputStream(), true);
+                    in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                } catch (Exception e) {
+                    updateMessage("unable to connect to server");
+                    return null;
+                }
+                out.println("register");
+                out.println(username);
+                out.println(pw);
+                String serverReply = null;
+                try {
+                    serverReply = in.readLine();
+                } catch (IOException i) {
+                    updateMessage("IOException while getting server reply");
+                    return null;
+                }
+                if (serverReply.equals("0")) {
+                    updateMessage("registration successful!");
+                    return null;
+                }
+                else if (serverReply.equals("1")) {
+                    updateMessage("username already taken");
+                    return null;
+                }
+                else {
+                    updateMessage("invalid server reply");
+                    return null;
+                }
+            }
+        };
+        
+        loginText.textProperty().bind(task.messageProperty());
+        Thread t = new Thread(task);
+        t.start();  
+        task.setOnSucceeded(e -> {
+            loginText.textProperty().unbind();
+            try {
+                socket.close();
+            } catch (IOException i) {
+                System.out.println("IOException while closing socket and input stream");
+            }
+        });
+    } 
     
     public static void setupLogin() {
         GridPane grid = new GridPane();
@@ -67,77 +179,35 @@ public class Client extends Application {
         PasswordField pwField = new PasswordField();
         grid.add(pwField, 1, 2);
         
-        Text msg = new Text();
-        grid.add(msg, 1, 6);
+        grid.add(loginText, 1, 6);
 
         Button signInBtn = new Button("Sign in");
         signInBtn.setOnAction(e -> {
-            String username = userField.getText();
-            String pw = pwField.getText();
+            username = userField.getText();
+            pw = pwField.getText();
             
             if (username.equals("") || pw.equals("")) {
-                msg.setFill(Color.RED);
-                msg.setText("username and password cannot be empty");
+                loginText.setFill(Color.RED);
+                loginText.setText("username and password cannot be empty");
             }
             else {
-                out.println("sign in");
-                out.println(username);
-                out.println(pw);
-                String serverReply = null;
-                try {
-                    serverReply = in.readLine();
-                } catch (IOException i) {
-                    System.out.println("IOException while getting server reply");
-                }
-                if (serverReply.equals("0")) {
-                    String bal = null;
-                    try {
-                        bal = in.readLine();
-                    } catch (IOException i) {
-                        System.out.println(i.getMessage());
-                    }
-                    homeText.setText("logged in as " + username + " (balance: " + bal + ")");
-                    window.setScene(home);
-                }
-                else if (serverReply.equals("1")) {
-                    msg.setFill(Color.RED);
-                    msg.setText("username does not exist");
-                }
-                else if (serverReply.equals("2")) {
-                    msg.setFill(Color.RED);
-                    msg.setText("incorrect password");
-                }
+                loginText.setFill(Color.GREEN);
+                login();
             }
         });
         
         Button registerBtn = new Button("Register");
         registerBtn.setOnAction(e -> {
-            String username = userField.getText();
-            String pw = pwField.getText();
+            username = userField.getText();
+            pw = pwField.getText();
             
             if (username.equals("") || pw.equals("")) {
-                msg.setFill(Color.RED);
-                msg.setText("username and password cannot be empty");
+                loginText.setFill(Color.RED);
+                loginText.setText("username and password cannot be empty");
             }
             else {
-                out.println("register");
-                out.println(userField.getText());
-                out.println(pwField.getText());
-
-                String serverReply = null;
-                try {
-                    serverReply = in.readLine();
-                } catch (IOException i) {
-                    System.out.println("IOException while getting server reply");
-                }
-                if (serverReply.equals("0")) {
-                    msg.setFill(Color.GREEN);
-                    msg.setText("registration successful!");
-                }
-                else if (serverReply.equals("1")) {
-                    msg.setFill(Color.RED);
-                    msg.setText("username already taken");
-                }
+                loginText.setFill(Color.GREEN);
+                register();
             }
         });
 
@@ -201,8 +271,14 @@ public class Client extends Application {
         
         Button logoutBtn = new Button("Logout");
         logoutBtn.setOnAction(e -> {
+            loginText.setText("");
             window.setScene(login);
             out.println("logout");
+            try {
+                socket.close();
+            } catch (IOException i) {
+                System.out.println(i.getMessage());
+            }
         });
         grid.add(logoutBtn, 2, 7);
       
