@@ -1,0 +1,143 @@
+package server;
+
+import java.io.*;
+import java.net.*;
+import java.util.Map;
+
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.regions.Region;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Item;
+import com.amazonaws.services.dynamodbv2.document.PutItemOutcome;
+import com.amazonaws.services.dynamodbv2.document.Table;
+
+public class ServerThread extends Thread {
+    private Socket socket;
+    private DynamoDB dynamoDB;
+    private String username;
+    
+    public ServerThread(Socket socket) {
+        super("ServerThread");
+        this.socket = socket;
+    }
+	
+    public void run() {
+	init();
+	Table table = dynamoDB.getTable("users"); 
+        //int portNumber = Integer.parseInt(args[0]);
+
+        try ( 
+            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        ) { 
+            while (true) {
+                String inputLine = in.readLine();
+                if (inputLine.equals("register")) {
+                    username = in.readLine();
+                    String pw = in.readLine();
+
+                    if (username.equals("") || pw.equals("")) {
+                        continue;
+                    }
+
+                    if (table.getItem("username", username) == null) {
+                        Item newUser = new Item()
+                            .withPrimaryKey("username", username)
+                            .withString("password", pw)
+                            .withNumber("balance", 1000000);
+                        PutItemOutcome outcome = table.putItem(newUser);
+                        System.out.println(socket.getInetAddress().getHostAddress() + " successfully created new user:");
+                        System.out.println("\tusername: " + username);
+                        System.out.println("\tpassword: " + pw);
+                        out.println("0");
+                    }
+                    else {
+                        out.println("1"); //username already exists
+                    }
+                    socket.close();
+                    return;
+                }
+                else if (inputLine.equals("sign in")) {
+                    username = in.readLine();
+                    String pw = in.readLine();
+
+                    if (username.equals("") || pw.equals("")) {
+                        continue;
+                    }
+
+                    Item user = table.getItem("username", username);
+                    if (user == null) {
+                        out.println("1"); //username doesn't exist
+                    }
+                    else {
+                        if (!(user.getString("password").equals(pw))) {
+                            out.println("2"); //incorect password
+                        }
+                        else {
+                            System.out.println(username + " logged in from " + socket.getInetAddress().getHostAddress());
+                            out.println("0");
+                            out.println(user.getInt("balance"));
+
+                            while (true) {
+                                inputLine = in.readLine();
+                                if (inputLine.equals("search stock")) {
+                                    String stock = in.readLine();
+                                    System.out.println(username + " searched for stock: " + stock);
+                                    String strURL = "https://download.finance.yahoo.com/d/quotes.csv?s=" + stock + "&f=l1";
+                                    URL stockURL = new URL(strURL);
+                                    BufferedReader in2 = new BufferedReader(new InputStreamReader(stockURL.openStream()));
+                                    String stockPrice = in2.readLine();
+                                    out.println(stockPrice);
+                                }
+                                else if (inputLine.equals("logout")) {
+                                    System.out.println(username + " logged out");
+                                    socket.close();
+                                    return;
+                                }
+                            }
+
+                            //retrieve user data and send to client
+                            /*
+                            Iterable<Map.Entry<String, Object>> i = user.attributes();
+                            for (Map.Entry e : i) {
+                                if (!(e.getKey().equals("username") || e.getKey().equals("password"))) {
+                                    out.println(e.getKey());
+                                    out.println(e.getValue());
+                                }
+                            }
+                            */
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            System.out.println(username + " disconnected");
+        }
+    }
+	
+    private void init() {
+        /*
+         * The ProfileCredentialsProvider will return your [default]
+         * credential profile by reading from the credentials file located at
+         * (~/.aws/credentials).
+         */
+        AWSCredentials credentials = null;
+        try {
+            credentials = new ProfileCredentialsProvider().getCredentials();
+        } catch (Exception e) {
+            throw new AmazonClientException(
+                "Cannot load the credentials from the credential profiles file. " +
+                "Please make sure that your credentials file is at the correct " +
+                "location (~/.aws/credentials), and is in valid format.",
+            e);
+        }
+        AmazonDynamoDBClient client = new AmazonDynamoDBClient(credentials);
+        Region usWest2 = Region.getRegion(Regions.US_WEST_2);
+        client.setRegion(usWest2);
+        dynamoDB = new DynamoDB(client);
+    }
+}
