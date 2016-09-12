@@ -14,6 +14,9 @@ import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.PutItemOutcome;
 import com.amazonaws.services.dynamodbv2.document.Table;
+import com.amazonaws.services.dynamodbv2.document.UpdateItemOutcome;
+import com.amazonaws.services.dynamodbv2.document.spec.UpdateItemSpec;
+import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
 
 public class ServerThread extends Thread {
     private Socket socket;
@@ -48,7 +51,7 @@ public class ServerThread extends Thread {
                         Item newUser = new Item()
                             .withPrimaryKey("username", username)
                             .withString("password", pw)
-                            .withNumber("balance", 1000000);
+                            .withNumber("balance", 1000000.00);
                         PutItemOutcome outcome = table.putItem(newUser);
                         System.out.println(socket.getInetAddress().getHostAddress() + " successfully created new user:");
                         System.out.println("\tusername: " + username);
@@ -80,7 +83,7 @@ public class ServerThread extends Thread {
                         else {
                             System.out.println(username + " logged in from " + socket.getInetAddress().getHostAddress());
                             out.println("0");
-                            out.println(user.getInt("balance"));
+                            out.println(user.getDouble("balance"));
 
                             while (true) {
                                 inputLine = in.readLine();
@@ -90,8 +93,47 @@ public class ServerThread extends Thread {
                                     String strURL = "https://download.finance.yahoo.com/d/quotes.csv?s=" + stock + "&f=l1";
                                     URL stockURL = new URL(strURL);
                                     BufferedReader in2 = new BufferedReader(new InputStreamReader(stockURL.openStream()));
-                                    String stockPrice = in2.readLine();
+                                    String stockPrice = in2.readLine(); //yahoo returns "N/A" if stock doesn't exist
                                     out.println(stockPrice);
+                                }
+                                else if (inputLine.equals("buy stock")) {
+                                    String stock = in.readLine();
+                                    int quantity = Integer.parseInt(in.readLine());
+                                    String strURL = "https://download.finance.yahoo.com/d/quotes.csv?s=" + stock + "&f=l1";
+                                    URL stockURL = new URL(strURL);
+                                    BufferedReader in2 = new BufferedReader(new InputStreamReader(stockURL.openStream()));
+                                    String stockPrice = in2.readLine();
+                                    if (stockPrice.equals("N/A")) continue;
+                                    
+                                    //add stock to user's account
+                                    double cost = quantity * Double.parseDouble(stockPrice);
+                                    double userBal = user.getDouble("balance");
+                                    if (cost > userBal) {
+                                        System.out.println(username + " tried to purchase too many shares");
+                                        out.println(1);
+                                        continue;
+                                    }
+                                    int prevQuantity;
+                                    boolean b = user.isPresent(stock + "_stock"); //check if user already owns this stock
+                                    if (b == false) {
+                                        prevQuantity = 0;                               
+                                    }
+                                    else {
+                                        prevQuantity = user.getInt(stock + "_stock");
+                                    }
+                                    //add stock to user's account and deduct balance
+                                    double newBal = userBal - cost;
+                                    UpdateItemSpec update = new UpdateItemSpec()
+                                        .withPrimaryKey("username", username)
+                                        .withUpdateExpression("set " + stock + "_stock = :v1, balance = :v2")
+                                        .withValueMap(new ValueMap()
+                                            .withNumber(":v1", prevQuantity + quantity)
+                                            .withNumber(":v2", newBal));
+                                    UpdateItemOutcome outcome = table.updateItem(update);
+                                    //let client know their new balance
+                                    System.out.println(username + " purchased " + Integer.toString(quantity) + " shares of " + stock);
+                                    out.println(0);
+                                    out.println(newBal);
                                 }
                                 else if (inputLine.equals("logout")) {
                                     System.out.println(username + " logged out");

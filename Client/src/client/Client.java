@@ -4,6 +4,8 @@ import java.io.*;
 import java.net.*;
 
 import javafx.application.Application;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.concurrent.Task;
 import javafx.geometry.*;
 import javafx.scene.Scene;
@@ -24,14 +26,19 @@ public class Client extends Application {
     
     static Stage window;
     static Scene login, home;
-    static Text loginText = new Text();
+    static Text loginText = new Text(); 
     static Text homeText = new Text();
+    static Text homeText2 = new Text();
     static String username, pw;
+    static Button buyBtn = new Button("Buy");
     
-    static String bal;
+    static String  stock;
+    static double bal, price;
     
     @Override
     public void start(Stage primaryStage) throws Exception {
+        loginText.setFill(Color.GREEN);
+        homeText2.setFill(Color.GREEN);
         setupLogin();
         setupHome();
 
@@ -42,6 +49,11 @@ public class Client extends Application {
     }
 
     public static void login() {
+        if (username.equals("") || pw.equals("")) {
+            loginText.setText("username and password cannot be empty");
+            return;
+        }
+        
         Task task = new Task<Integer>() {
             @Override
             protected Integer call() {     
@@ -58,7 +70,7 @@ public class Client extends Application {
                 out.println("sign in");
                 out.println(username);
                 out.println(pw);
-                String serverReply = null;
+                String serverReply;
                 try {
                     serverReply = in.readLine();
                 } catch (IOException e) {
@@ -67,7 +79,7 @@ public class Client extends Application {
                 }
                 if (serverReply.equals("0")) {
                     try {
-                        bal = in.readLine();
+                        bal = Double.parseDouble(in.readLine());
                     } catch (IOException e) {
                         updateMessage("IOException while getting server reply");
                         return 1;
@@ -75,12 +87,10 @@ public class Client extends Application {
                     return 0;
                 }
                 else if (serverReply.equals("1")) {
-                    //msg.setFill(Color.RED);
                     updateMessage("username does not exist");
                     return 1;
                 }
                 else if (serverReply.equals("2")) {
-                    //msg.setFill(Color.RED);
                     updateMessage("incorrect password");
                     return 1;
                 }
@@ -92,12 +102,12 @@ public class Client extends Application {
         };
         
         loginText.textProperty().bind(task.messageProperty());
-        Thread t = new Thread(task);
-        t.start();  
+        new Thread(task).start();
         task.setOnSucceeded(e -> {
             int result = (int) task.getValue();
             if (result == 0) {
-                homeText.setText("logged in as " + username + " (balance: " + bal + ")");
+                String text = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", bal, ")");
+                homeText.setText(text);
                 window.setScene(home);
             }
             loginText.textProperty().unbind();
@@ -105,6 +115,11 @@ public class Client extends Application {
     }
     
     public static void register() {
+        if (username.equals("") || pw.equals("")) {
+            loginText.setText("username and password cannot be empty");
+            return;
+        }
+        
         Task task = new Task<Void>() {
             @Override
             protected Void call() {   
@@ -144,8 +159,7 @@ public class Client extends Application {
         };
         
         loginText.textProperty().bind(task.messageProperty());
-        Thread t = new Thread(task);
-        t.start();  
+        new Thread(task).start();
         task.setOnSucceeded(e -> {
             loginText.textProperty().unbind();
             try {
@@ -179,36 +193,32 @@ public class Client extends Application {
         PasswordField pwField = new PasswordField();
         grid.add(pwField, 1, 2);
         
+        userField.setOnAction(e -> {
+            username = userField.getText();
+            pw = pwField.getText();
+            login();           
+        });
+        
+        pwField.setOnAction(e -> {
+            username = userField.getText();
+            pw = pwField.getText();
+            login(); 
+        });
+        
         grid.add(loginText, 1, 6);
 
         Button signInBtn = new Button("Sign in");
         signInBtn.setOnAction(e -> {
             username = userField.getText();
             pw = pwField.getText();
-            
-            if (username.equals("") || pw.equals("")) {
-                loginText.setFill(Color.RED);
-                loginText.setText("username and password cannot be empty");
-            }
-            else {
-                loginText.setFill(Color.GREEN);
-                login();
-            }
+            login();
         });
         
         Button registerBtn = new Button("Register");
         registerBtn.setOnAction(e -> {
             username = userField.getText();
             pw = pwField.getText();
-            
-            if (username.equals("") || pw.equals("")) {
-                loginText.setFill(Color.RED);
-                loginText.setText("username and password cannot be empty");
-            }
-            else {
-                loginText.setFill(Color.GREEN);
-                register();
-            }
+            register();
         });
 
         HBox hbButton = new HBox(20);
@@ -235,39 +245,27 @@ public class Client extends Application {
         grid.add(stockLabel, 0, 5);
         
         TextField stockField = new TextField();
+        stockField.setOnAction(e -> {
+            stock = stockField.getText();
+            searchStock();  
+        });
         grid.add(stockField, 1, 5);
         
-        Text msg = new Text();
-        grid.add(msg, 0, 6);
+        grid.add(homeText2, 0, 6);
         
         Button stockBtn = new Button("search");
         stockBtn.setOnAction(e -> {
-            String stock = stockField.getText();
-            
-            if (stock.equals("")) {
-                msg.setFill(Color.RED);
-                msg.setText("field cannot be empty");
-            }
-            else {
-                out.println("search stock");
-                out.println(stock);
-                String serverReply = null;
-                try {
-                    serverReply = in.readLine();
-                } catch (IOException i) {
-                    System.out.println("IOException while getting server reply");
-                }
-                if (serverReply.equals("N/A")) {
-                    msg.setFill(Color.RED);
-                    msg.setText("unknown stock symbol");
-                }
-                else {
-                    msg.setFill(Color.GREEN);
-                    msg.setText("last trade: " + serverReply);
-                }
-            }
+            stock = stockField.getText();
+            searchStock();
         });
         grid.add(stockBtn, 2, 5);
+        
+        buyBtn.setOnAction(e -> {
+            BuyStockBox box = new BuyStockBox();
+            box.display(stock, price, bal, out, in);
+        });
+        buyBtn.setVisible(false);
+        grid.add(buyBtn, 1, 6);
         
         Button logoutBtn = new Button("Logout");
         logoutBtn.setOnAction(e -> {
@@ -283,6 +281,47 @@ public class Client extends Application {
         grid.add(logoutBtn, 2, 7);
       
         home = new Scene(grid, 500, 500);
+    }
+    
+    public static void searchStock() {
+        price = 0;
+        BooleanProperty showBuyBtn = new SimpleBooleanProperty(false);
+        buyBtn.visibleProperty().bind(showBuyBtn);
+        
+        Task task = new Task<Void>() {
+            @Override
+            protected Void call() {
+               
+                if (stock.equals("")) {
+                    updateMessage("field cannot be empty");
+                    return null;
+                }
+                out.println("search stock");
+                out.println(stock);
+                String serverReply;
+                try {
+                    serverReply = in.readLine();
+                } catch (IOException i) {
+                    System.out.println("IOException while getting server reply");
+                    return null;
+                }
+                if (serverReply.equals("N/A")) {
+                    updateMessage("unknown stock symbol");
+                }
+                else {
+                    price = Double.parseDouble(serverReply);
+                    updateMessage("last trade: $" + serverReply);
+                    showBuyBtn.setValue(true);
+                }
+                return null;
+            }
+        };
+        
+        homeText2.textProperty().bind(task.messageProperty());       
+        new Thread(task).start(); 
+        task.setOnSucceeded(e -> {
+            homeText2.textProperty().unbind();
+        });
     }
     
     public static void main(String[] args) {
