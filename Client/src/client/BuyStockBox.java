@@ -21,8 +21,17 @@ import javafx.util.StringConverter;
 import javafx.util.converter.NumberStringConverter;
 
 public class BuyStockBox {
+    PrintWriter out;
+    BufferedReader in;
+    String stock;
+    TextField qField = new TextField();
+    Text msg = new Text();
+    Text balText;
 
     public void display(String stock, double price, double bal, PrintWriter out, BufferedReader in) {
+        this.out = out;
+        this.in = in;
+        this.stock = stock;
         Stage window = new Stage();
         window.initModality(Modality.APPLICATION_MODAL);
         window.setTitle("Buy " + stock);
@@ -33,13 +42,15 @@ public class BuyStockBox {
         grid.setVgap(10);
         
         String s = String.format("%s $%,.2f", "your balance:", bal);
-        Text balText = new Text(s);
+        balText = new Text(s);
         grid.add(balText, 1, 0);
         
         Label quantity = new Label("quantity");
         grid.add(quantity, 0, 1);
         
-        TextField qField = new TextField();
+        qField.setOnAction(e -> {
+            
+        });
         grid.add(qField, 1, 1);
 
         Text costText = new Text();
@@ -56,36 +67,10 @@ public class BuyStockBox {
         Button buyBtn = new Button("Buy now");
         grid.add(buyBtn, 1, 3);
         
-        Text msg = new Text();
         grid.add(msg, 1, 4);
         
         buyBtn.setOnAction(e -> {
-            msg.setFill(Color.GREEN);
-            msg.setText("loading...");
-            out.println("buy stock");
-            out.println(stock);
-            out.println(qField.getText());
-            String serverReply = null;
-            try {
-                serverReply = in.readLine();
-            } catch (IOException i) {
-                System.out.println("IOException while getting server reply");
-            }
-            if (serverReply.equals("1")) {
-                msg.setFill(Color.RED);
-                msg.setText("insufficient balance!");
-            }
-            else if (serverReply.equals("0")) {
-                msg.setFill(Color.GREEN);
-                msg.setText("purchase complete!");
-                try {
-                    Double newBal = Double.parseDouble(in.readLine());
-                    String s2 = String.format("%s $%,.2f", "your balance:", newBal);
-                    balText.setText(s2);
-                } catch (IOException i) {
-                    System.out.println("IOException while getting server reply");
-                }
-            }
+            buyStock();
         });
         
         Scene scene = new Scene(grid, 300, 200);
@@ -93,64 +78,32 @@ public class BuyStockBox {
         window.showAndWait();
     }
     
-    /*public void buyStock() {
-        Task task = new Task<Integer>() {
-            @Override
-            protected Integer call() {     
-                updateMessage("connecting...");
-                try {
-                    hostIP = InetAddress.getLocalHost();
-                    socket = new Socket(hostIP, portNumber);
-                    out = new PrintWriter(socket.getOutputStream(), true);
-                    in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                } catch (Exception e) {
-                    updateMessage("unable to connect to server");
-                    return 1;
-                }
-                out.println("sign in");
-                out.println(username);
-                out.println(pw);
-                String serverReply;
-                try {
-                    serverReply = in.readLine();
-                } catch (IOException e) {
-                    updateMessage("IOException while getting server reply");
-                    return 1;
-                }
-                if (serverReply.equals("0")) {
-                    try {
-                        bal = Double.parseDouble(in.readLine());
-                    } catch (IOException e) {
-                        updateMessage("IOException while getting server reply");
-                        return 1;
-                    }
-                    return 0;
-                }
-                else if (serverReply.equals("1")) {
-                    updateMessage("username does not exist");
-                    return 1;
-                }
-                else if (serverReply.equals("2")) {
-                    updateMessage("incorrect password");
-                    return 1;
-                }
-                else {
-                    updateMessage("invalid server reply");
-                    return 1;
-                }
+    public void buyStock() {
+        msg.setFill(Color.GREEN);
+        msg.setText("loading...");
+        out.println("buy stock");
+        out.println(stock);
+        out.println(qField.getText());
+        String serverReply = null;
+        try {
+            serverReply = in.readLine();
+        } catch (IOException i) {
+            System.out.println("IOException while getting server reply");
+        }
+        if (serverReply.equals("1")) {
+            msg.setFill(Color.RED);
+            msg.setText("insufficient balance!");
+        }
+        else if (serverReply.equals("0")) {
+            msg.setFill(Color.GREEN);
+            msg.setText("purchase complete!"); 
+            try {
+                Double newBal = Double.parseDouble(in.readLine());
+                String s2 = String.format("%s $%,.2f", "your balance:", newBal);
+                balText.setText(s2);
+            } catch (IOException i) {
+                System.out.println("IOException while getting server reply");
             }
-        };
-        
-        loginText.textProperty().bind(task.messageProperty());
-        new Thread(task).start();
-        task.setOnSucceeded(e -> {
-            int result = (int) task.getValue();
-            if (result == 0) {
-                String text = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", bal, ")");
-                homeText.setText(text);
-                window.setScene(home);
-            }
-            loginText.textProperty().unbind();
-        });
-    }*/
+        }
+    }
 }

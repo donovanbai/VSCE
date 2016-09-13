@@ -4,8 +4,11 @@ import java.io.*;
 import java.net.*;
 
 import javafx.application.Application;
+import javafx.beans.binding.ObjectBinding;
 import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.concurrent.Task;
 import javafx.geometry.*;
 import javafx.scene.Scene;
@@ -13,6 +16,7 @@ import javafx.scene.text.*;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import javafx.stage.Stage;
  
 public class ClientLocal extends Application {
@@ -37,8 +41,6 @@ public class ClientLocal extends Application {
     
     @Override
     public void start(Stage primaryStage) throws Exception {
-        loginText.setFill(Color.GREEN);
-        homeText2.setFill(Color.GREEN);
         setupLogin();
         setupHome();
 
@@ -50,13 +52,15 @@ public class ClientLocal extends Application {
 
     public static void login() {
         if (username.equals("") || pw.equals("")) {
+            loginText.setFill(Color.RED);
             loginText.setText("username and password cannot be empty");
             return;
         }
-        
+        ObjectProperty textColorProperty = new SimpleObjectProperty();
         Task task = new Task<Integer>() {
             @Override
-            protected Integer call() {     
+            protected Integer call() {
+                textColorProperty.setValue(Color.GREEN);
                 updateMessage("connecting...");
                 try {
                     hostIP = InetAddress.getLocalHost();
@@ -64,6 +68,7 @@ public class ClientLocal extends Application {
                     out = new PrintWriter(socket.getOutputStream(), true);
                     in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 } catch (Exception e) {
+                    textColorProperty.setValue(Color.RED);
                     updateMessage("unable to connect to server");
                     return 1;
                 }
@@ -74,6 +79,7 @@ public class ClientLocal extends Application {
                 try {
                     serverReply = in.readLine();
                 } catch (IOException e) {
+                    textColorProperty.setValue(Color.RED);
                     updateMessage("IOException while getting server reply");
                     return 1;
                 }
@@ -81,26 +87,31 @@ public class ClientLocal extends Application {
                     try {
                         bal = Double.parseDouble(in.readLine());
                     } catch (IOException e) {
+                        textColorProperty.setValue(Color.RED);
                         updateMessage("IOException while getting server reply");
                         return 1;
                     }
                     return 0;
                 }
                 else if (serverReply.equals("1")) {
+                    textColorProperty.setValue(Color.RED);
                     updateMessage("username does not exist");
                     return 1;
                 }
                 else if (serverReply.equals("2")) {
+                    textColorProperty.setValue(Color.RED);
                     updateMessage("incorrect password");
                     return 1;
                 }
                 else {
+                    textColorProperty.setValue(Color.RED);
                     updateMessage("invalid server reply");
                     return 1;
                 }
             }
         };
         
+        loginText.fillProperty().bind(textColorProperty);
         loginText.textProperty().bind(task.messageProperty());
         new Thread(task).start();
         task.setOnSucceeded(e -> {
@@ -111,18 +122,21 @@ public class ClientLocal extends Application {
                 window.setScene(home);
             }
             loginText.textProperty().unbind();
+            loginText.fillProperty().unbind();
         });
     }
     
     public static void register() {
         if (username.equals("") || pw.equals("")) {
+            loginText.setFill(Color.RED);
             loginText.setText("username and password cannot be empty");
             return;
         }
-        
+        ObjectProperty textColorProperty = new SimpleObjectProperty();
         Task task = new Task<Void>() {
             @Override
-            protected Void call() {   
+            protected Void call() {
+                textColorProperty.setValue(Color.GREEN);
                 updateMessage("connecting...");
                 try {
                     hostIP = InetAddress.getLocalHost();
@@ -130,6 +144,7 @@ public class ClientLocal extends Application {
                     out = new PrintWriter(socket.getOutputStream(), true);
                     in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 } catch (Exception e) {
+                    textColorProperty.setValue(Color.RED);
                     updateMessage("unable to connect to server");
                     return null;
                 }
@@ -140,28 +155,33 @@ public class ClientLocal extends Application {
                 try {
                     serverReply = in.readLine();
                 } catch (IOException i) {
+                    textColorProperty.setValue(Color.RED);
                     updateMessage("IOException while getting server reply");
                     return null;
                 }
                 if (serverReply.equals("0")) {
+                    textColorProperty.setValue(Color.GREEN);
                     updateMessage("registration successful!");
                     return null;
                 }
                 else if (serverReply.equals("1")) {
+                    textColorProperty.setValue(Color.RED);
                     updateMessage("username already taken");
                     return null;
                 }
                 else {
+                    textColorProperty.setValue(Color.RED);
                     updateMessage("invalid server reply");
                     return null;
                 }
             }
         };
-        
+        loginText.fillProperty().bind(textColorProperty);
         loginText.textProperty().bind(task.messageProperty());
         new Thread(task).start();
         task.setOnSucceeded(e -> {
             loginText.textProperty().unbind();
+            loginText.fillProperty().unbind();
             try {
                 socket.close();
             } catch (IOException i) {
@@ -251,8 +271,6 @@ public class ClientLocal extends Application {
         });
         grid.add(stockField, 1, 5);
         
-        grid.add(homeText2, 0, 6);
-        
         Button stockBtn = new Button("search");
         stockBtn.setOnAction(e -> {
             stock = stockField.getText();
@@ -265,7 +283,9 @@ public class ClientLocal extends Application {
             box.display(stock, price, bal, out, in);
         });
         buyBtn.setVisible(false);
-        grid.add(buyBtn, 1, 6);
+        HBox hbox = new HBox(10);
+        hbox.getChildren().addAll(homeText2, buyBtn);       
+        grid.add(hbox, 1, 6);
         
         Button logoutBtn = new Button("Logout");
         logoutBtn.setOnAction(e -> {
@@ -287,12 +307,12 @@ public class ClientLocal extends Application {
         price = 0;
         BooleanProperty showBuyBtn = new SimpleBooleanProperty(false);
         buyBtn.visibleProperty().bind(showBuyBtn);
-        
+        ObjectProperty textColorProperty = new SimpleObjectProperty();
         Task task = new Task<Void>() {
             @Override
-            protected Void call() {
-               
+            protected Void call() {              
                 if (stock.equals("")) {
+                    textColorProperty.setValue(Color.RED);
                     updateMessage("field cannot be empty");
                     return null;
                 }
@@ -302,14 +322,17 @@ public class ClientLocal extends Application {
                 try {
                     serverReply = in.readLine();
                 } catch (IOException i) {
-                    System.out.println("IOException while getting server reply");
+                    textColorProperty.setValue(Color.RED);
+                    updateMessage("IOException while getting server reply");
                     return null;
                 }
                 if (serverReply.equals("N/A")) {
+                    textColorProperty.setValue(Color.RED);
                     updateMessage("unknown stock symbol");
                 }
                 else {
                     price = Double.parseDouble(serverReply);
+                    textColorProperty.setValue(Color.GREEN);
                     updateMessage("last trade: $" + serverReply);
                     showBuyBtn.setValue(true);
                 }
@@ -317,10 +340,12 @@ public class ClientLocal extends Application {
             }
         };
         
+        homeText2.fillProperty().bind(textColorProperty);
         homeText2.textProperty().bind(task.messageProperty());       
         new Thread(task).start(); 
         task.setOnSucceeded(e -> {
             homeText2.textProperty().unbind();
+            homeText2.fillProperty().unbind();
         });
     }
     
