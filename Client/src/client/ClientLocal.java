@@ -280,7 +280,7 @@ public class ClientLocal extends Application {
         
         buyBtn.setOnAction(e -> {
             BuyStockBox box = new BuyStockBox();
-            box.display(stock, price, bal, out, in);
+            box.display(stock, price, bal, homeText, username, out, in);
         });
         buyBtn.setVisible(false);
         HBox hbox = new HBox(10);

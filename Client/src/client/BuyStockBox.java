@@ -23,15 +23,17 @@ import javafx.util.converter.NumberStringConverter;
 public class BuyStockBox {
     PrintWriter out;
     BufferedReader in;
-    String stock;
+    String stock, username;
     TextField qField = new TextField();
     Text msg = new Text();
-    Text balText;
+    Text balText, homeText;
 
-    public void display(String stock, double price, double bal, PrintWriter out, BufferedReader in) {
+    public void display(String stock, double price, double bal, Text homeText, String username, PrintWriter out, BufferedReader in) {
         this.out = out;
         this.in = in;
         this.stock = stock;
+        this.homeText = homeText;
+        this.username = username;
         Stage window = new Stage();
         window.initModality(Modality.APPLICATION_MODAL);
         window.setTitle("Buy " + stock);
@@ -101,6 +103,8 @@ public class BuyStockBox {
                 Double newBal = Double.parseDouble(in.readLine());
                 String s2 = String.format("%s $%,.2f", "your balance:", newBal);
                 balText.setText(s2);
+                String s3 = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", newBal, ")");
+                homeText.setText(s3);
             } catch (IOException i) {
                 System.out.println("IOException while getting server reply");
             }
