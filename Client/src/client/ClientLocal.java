@@ -4,19 +4,20 @@ import java.io.*;
 import java.net.*;
 
 import javafx.application.Application;
-import javafx.beans.binding.ObjectBinding;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.geometry.*;
 import javafx.scene.Scene;
 import javafx.scene.text.*;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.scene.paint.Paint;
 import javafx.stage.Stage;
  
 public class ClientLocal extends Application {
@@ -29,7 +30,7 @@ public class ClientLocal extends Application {
     static BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
     
     static Stage window;
-    static Scene login, home;
+    static Scene login, home, profile;
     static Text loginText = new Text(); 
     static Text homeText = new Text();
     static Text homeText2 = new Text();
@@ -43,11 +44,189 @@ public class ClientLocal extends Application {
     public void start(Stage primaryStage) throws Exception {
         setupLogin();
         setupHome();
+        setupProfile();
 
         window = primaryStage;
         window.setTitle("VSCE");
         window.setScene(login);        
         window.show();
+    }
+    
+    public static void setupLogin() {
+        GridPane grid = new GridPane();
+        grid.setAlignment(Pos.CENTER);
+        grid.setPadding(new Insets(25, 25, 25, 25)); //top, right, bottom, left
+        grid.setHgap(15);
+        grid.setVgap(15);
+
+        Text scenetitle = new Text("Welcome to VSCE");
+        scenetitle.setFont(Font.font("Tahoma", FontWeight.NORMAL, 20));
+        grid.add(scenetitle, 0, 0, 2, 1); //column, row, column span, row span
+
+        Label userLabel = new Label("Username:");
+        grid.add(userLabel, 0, 1);
+
+        TextField userField = new TextField();
+        grid.add(userField, 1, 1);
+
+        Label pwLabel = new Label("Password:");
+        grid.add(pwLabel, 0, 2);
+
+        PasswordField pwField = new PasswordField();
+        grid.add(pwField, 1, 2);
+        
+        userField.setOnAction(e -> {
+            username = userField.getText();
+            pw = pwField.getText();
+            login();           
+        });
+        
+        pwField.setOnAction(e -> {
+            username = userField.getText();
+            pw = pwField.getText();
+            login(); 
+        });
+        
+        grid.add(loginText, 1, 6);
+
+        Button signInBtn = new Button("Sign in");
+        signInBtn.setOnAction(e -> {
+            username = userField.getText();
+            pw = pwField.getText();
+            login();
+        });
+        
+        Button registerBtn = new Button("Register");
+        registerBtn.setOnAction(e -> {
+            username = userField.getText();
+            pw = pwField.getText();
+            register();
+        });
+
+        HBox hbButton = new HBox(20);
+        hbButton.setAlignment(Pos.BOTTOM_RIGHT);
+        hbButton.getChildren().addAll(signInBtn, registerBtn);
+        grid.add(hbButton, 0, 4, 2, 1);
+
+        //grid.setGridLinesVisible(true);
+
+        login = new Scene(grid, 500, 500);       
+    }
+    
+    public static void setupHome() {
+        GridPane grid = new GridPane();
+        grid.setAlignment(Pos.CENTER);
+        grid.setPadding(new Insets(25, 25, 25, 25)); //top, right, bottom, left
+        grid.setHgap(15);
+        grid.setVgap(15);
+        
+        homeText.setFont(Font.font("Tahoma", FontWeight.NORMAL, 20));
+        grid.add(homeText, 0, 0); 
+        GridPane.setHalignment(homeText, HPos.CENTER);
+        
+        Button profBtn = new Button("View profile");
+        profBtn.setOnAction(e -> {
+            window.setScene(profile);
+        });        
+        grid.add(profBtn, 0, 2);
+        GridPane.setHalignment(profBtn, HPos.CENTER);
+        
+        Label stockLabel = new Label("search for a stock");
+        
+        TextField stockField = new TextField();
+        stockField.setOnAction(e -> {
+            stock = stockField.getText();
+            searchStock();  
+        });
+        
+        Button stockBtn = new Button("search");
+        stockBtn.setOnAction(e -> {
+            stock = stockField.getText();
+            searchStock();
+        });
+        
+        HBox hbox = new HBox(15);
+        hbox.getChildren().addAll(stockLabel, stockField, stockBtn);
+        grid.add(hbox, 0, 5);
+        GridPane.setHalignment(hbox, HPos.CENTER);
+        
+        buyBtn.setOnAction(e -> {
+            BuyStockBox box = new BuyStockBox();
+            box.display(stock, price, bal, homeText, username, out, in);
+        });
+        buyBtn.setVisible(false);
+        HBox hbox2 = new HBox(15);
+        hbox2.getChildren().addAll(homeText2, buyBtn);   
+        grid.add(hbox2, 0, 6);
+        GridPane.setHalignment(hbox2, HPos.CENTER);
+        GridPane.setFillWidth(hbox2, false); //otherwise hbox2 would be too wide
+        
+        Button logoutBtn = new Button("Logout");
+        logoutBtn.setOnAction(e -> {
+            loginText.setText("");
+            window.setScene(login);
+            out.println("logout");
+            try {
+                socket.close();
+            } catch (IOException i) {
+                System.out.println(i.getMessage());
+            }
+        });
+        grid.add(logoutBtn, 0, 7);
+        GridPane.setHalignment(logoutBtn, HPos.RIGHT);
+      
+        //grid.setGridLinesVisible(true);
+        home = new Scene(grid, 500, 500);
+    }
+    
+    public static void setupProfile() {
+        GridPane grid = new GridPane();
+        grid.setAlignment(Pos.CENTER);
+        grid.setPadding(new Insets(25, 25, 25, 25)); //top, right, bottom, left
+        grid.setHgap(15);
+        grid.setVgap(15);
+        
+        String style = "-fx-alignment: CENTER;";
+        
+        TableColumn<Asset, String> nameCol = new TableColumn<>("Name");
+        //nameCol.setMinWidth(200);
+        nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
+        nameCol.setStyle(style);
+        
+        TableColumn<Asset, String> typeCol = new TableColumn<>("Type");
+        //nameCol.setMinWidth(200);
+        typeCol.setCellValueFactory(new PropertyValueFactory<>("type"));
+        typeCol.setStyle(style);
+        
+        TableColumn<Asset, Double> priceCol = new TableColumn<>("Price");
+        //nameCol.setMinWidth(200);
+        priceCol.setCellValueFactory(new PropertyValueFactory<>("price"));
+        priceCol.setStyle(style);
+        
+        TableColumn<Asset, Integer> quantityCol = new TableColumn<>("Quantity");
+        //nameCol.setMinWidth(200);
+        quantityCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
+        quantityCol.setStyle(style);
+        
+        TableColumn<Asset, Double> totalValCol = new TableColumn<>("Total Value");
+        //nameCol.setMinWidth(200);
+        totalValCol.setCellValueFactory(new PropertyValueFactory<>("totalVal"));
+        totalValCol.setStyle(style);
+        
+        TableView<Asset> table = new TableView<>();
+        table.setItems(getAssets());
+        table.getColumns().addAll(nameCol, typeCol, priceCol, quantityCol, totalValCol);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        grid.add(table, 0, 0);
+        profile = new Scene(grid, 500, 500);
+    }
+    
+    public static ObservableList<Asset> getAssets() {
+        ObservableList<Asset> assets = FXCollections.observableArrayList();
+        assets.add(new Asset("aapl", "stock", 115.43, 2));
+        assets.add(new Asset("goog", "stock", 45.23, 3));
+        assets.add(new Asset("msft", "stock", 94.30, 1));
+        return assets;
     }
 
     public static void login() {
@@ -189,119 +368,6 @@ public class ClientLocal extends Application {
             }
         });
     } 
-    
-    public static void setupLogin() {
-        GridPane grid = new GridPane();
-        grid.setAlignment(Pos.CENTER);
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(25, 25, 25, 25)); //top, right, bottom, left
-
-        Text scenetitle = new Text("Welcome to VSCE");
-        scenetitle.setFont(Font.font("Tahoma", FontWeight.NORMAL, 20));
-        grid.add(scenetitle, 0, 0, 2, 1); //column, row, column span, row span
-
-        Label userLabel = new Label("Username:");
-        grid.add(userLabel, 0, 1);
-
-        TextField userField = new TextField();
-        grid.add(userField, 1, 1);
-
-        Label pwLabel = new Label("Password:");
-        grid.add(pwLabel, 0, 2);
-
-        PasswordField pwField = new PasswordField();
-        grid.add(pwField, 1, 2);
-        
-        userField.setOnAction(e -> {
-            username = userField.getText();
-            pw = pwField.getText();
-            login();           
-        });
-        
-        pwField.setOnAction(e -> {
-            username = userField.getText();
-            pw = pwField.getText();
-            login(); 
-        });
-        
-        grid.add(loginText, 1, 6);
-
-        Button signInBtn = new Button("Sign in");
-        signInBtn.setOnAction(e -> {
-            username = userField.getText();
-            pw = pwField.getText();
-            login();
-        });
-        
-        Button registerBtn = new Button("Register");
-        registerBtn.setOnAction(e -> {
-            username = userField.getText();
-            pw = pwField.getText();
-            register();
-        });
-
-        HBox hbButton = new HBox(20);
-        hbButton.setAlignment(Pos.BOTTOM_RIGHT);
-        hbButton.getChildren().addAll(signInBtn, registerBtn);
-        grid.add(hbButton, 0, 4, 2, 1);
-
-        //grid.setGridLinesVisible(true);
-
-        login = new Scene(grid, 500, 500);       
-    }
-    
-    public static void setupHome() {
-        GridPane grid = new GridPane();
-        grid.setAlignment(Pos.CENTER);
-        grid.setHgap(10);
-        grid.setVgap(10);
-        //grid.setPadding(new Insets(25, 25, 25, 25));
-        
-        homeText.setFont(Font.font("Tahoma", FontWeight.NORMAL, 20));
-        grid.add(homeText, 0, 0, 2, 1); 
-        
-        Label stockLabel = new Label("search for a stock");
-        grid.add(stockLabel, 0, 5);
-        
-        TextField stockField = new TextField();
-        stockField.setOnAction(e -> {
-            stock = stockField.getText();
-            searchStock();  
-        });
-        grid.add(stockField, 1, 5);
-        
-        Button stockBtn = new Button("search");
-        stockBtn.setOnAction(e -> {
-            stock = stockField.getText();
-            searchStock();
-        });
-        grid.add(stockBtn, 2, 5);
-        
-        buyBtn.setOnAction(e -> {
-            BuyStockBox box = new BuyStockBox();
-            box.display(stock, price, bal, homeText, username, out, in);
-        });
-        buyBtn.setVisible(false);
-        HBox hbox = new HBox(10);
-        hbox.getChildren().addAll(homeText2, buyBtn);       
-        grid.add(hbox, 1, 6);
-        
-        Button logoutBtn = new Button("Logout");
-        logoutBtn.setOnAction(e -> {
-            loginText.setText("");
-            window.setScene(login);
-            out.println("logout");
-            try {
-                socket.close();
-            } catch (IOException i) {
-                System.out.println(i.getMessage());
-            }
-        });
-        grid.add(logoutBtn, 2, 7);
-      
-        home = new Scene(grid, 500, 500);
-    }
     
     public static void searchStock() {
         price = 0;
