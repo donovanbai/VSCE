@@ -39,6 +39,7 @@ public class ClientLocal extends Application {
     
     static String  stock;
     static double bal, price;
+    static ObservableList<Asset> assets = FXCollections.observableArrayList();
     
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -127,6 +128,7 @@ public class ClientLocal extends Application {
         Button profBtn = new Button("View profile");
         profBtn.setOnAction(e -> {
             window.setScene(profile);
+            temp();
         });        
         grid.add(profBtn, 0, 2);
         GridPane.setHalignment(profBtn, HPos.CENTER);
@@ -214,19 +216,65 @@ public class ClientLocal extends Application {
         totalValCol.setStyle(style);
         
         TableView<Asset> table = new TableView<>();
-        table.setItems(getAssets());
+        assets.add(new Asset());
+        table.setItems(assets);
         table.getColumns().addAll(nameCol, typeCol, priceCol, quantityCol, totalValCol);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         grid.add(table, 0, 0);
-        profile = new Scene(grid, 500, 500);
+    
+        Text text = new Text("loading");
+        VBox vbox = new VBox(text);
+        profile = new Scene(vbox, 500, 500);
     }
     
-    public static ObservableList<Asset> getAssets() {
-        ObservableList<Asset> assets = FXCollections.observableArrayList();
-        assets.add(new Asset("aapl", "stock", 115.43, 2));
-        assets.add(new Asset("goog", "stock", 45.23, 3));
-        assets.add(new Asset("msft", "stock", 94.30, 1));
-        return assets;
+    public static void temp() {
+        Task task = new Task<Void>() {
+            @Override
+            protected Void call() {
+                int i = 0;
+                while (i < 100000) {
+                    System.out.println(i);
+                    i++;
+                }
+                return null;
+            }
+        };
+        
+        new Thread(task).start();
+        task.setOnSucceeded(e -> {
+            Text text = new Text("done loading!");
+            VBox vbox = new VBox(text);
+            profile = new Scene(vbox, 500, 500);
+            window.setScene(profile);
+        });      
+    }
+    
+    public static void getAssets() {        
+        Task task = new Task<Void>() {
+            @Override
+            protected Void call() {
+                out.println("get profile");
+                String serverReply;
+                try {
+                    while ((serverReply = in.readLine()) != null) {
+                        String[] arr = serverReply.split("_"); //eg. parse "aapl_stock" into "appl" and "stock"
+                        String name = arr[0];
+                        String type = arr[1];
+                        double price = Double.parseDouble(in.readLine());
+                        int quantity = Integer.parseInt(in.readLine());
+                        assets.add(new Asset(name, type, price, quantity));
+                    }
+                } catch (IOException e) {
+                    System.out.println("IOException while getting server reply");
+                }
+                return null;
+            }
+        };
+        
+        new Thread(task).start();
+        task.setOnSucceeded(e -> {
+
+        });              
     }
 
     public static void login() {
