@@ -470,6 +470,7 @@ public class ClientLocal extends Application {
         task.setOnSucceeded(e -> {
             homeText2.textProperty().unbind();
             homeText2.fillProperty().unbind();
+            buyBtn.visibleProperty().unbind();
         });
     }
     

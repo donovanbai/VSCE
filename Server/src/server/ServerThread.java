@@ -149,6 +149,7 @@ public class ServerThread extends Thread {
                                     for (Map.Entry e : i) {
                                         if (!(e.getKey().equals("username") || e.getKey().equals("password") || e.getKey().equals("balance"))) {
                                             out.println(e.getKey());
+                                            System.out.println(e.getKey());
                                             out.println(e.getValue());
                                             String[] arr = e.getKey().toString().split("_");
                                             String name = arr[0];
