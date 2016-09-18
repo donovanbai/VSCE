@@ -43,8 +43,6 @@ public class Client extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
         setupLogin();
-        setupHome();
-        setupProfile();
 
         window = primaryStage;
         window.setTitle("VSCE");
@@ -126,7 +124,7 @@ public class Client extends Application {
         
         Button profBtn = new Button("View profile");
         profBtn.setOnAction(e -> {
-            window.setScene(profile);
+            setupProfile();
         });        
         grid.add(profBtn, 0, 2);
         GridPane.setHalignment(profBtn, HPos.CENTER);
@@ -180,6 +178,12 @@ public class Client extends Application {
     }
     
     public static void setupProfile() {
+        //show loading screen while fetching data from server
+        Text text = new Text("loading...");
+        VBox vbox = new VBox(text);
+        profile = new Scene(vbox, 500, 500);
+        window.setScene(profile);
+        
         GridPane grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
         grid.setPadding(new Insets(25, 25, 25, 25)); //top, right, bottom, left
@@ -191,7 +195,7 @@ public class Client extends Application {
         TableColumn<Asset, String> nameCol = new TableColumn<>("Name");
         //nameCol.setMinWidth(200);
         nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
-        nameCol.setStyle(style);
+        nameCol.setStyle(style); //set text alignment in column
         
         TableColumn<Asset, String> typeCol = new TableColumn<>("Type");
         //nameCol.setMinWidth(200);
@@ -214,19 +218,68 @@ public class Client extends Application {
         totalValCol.setStyle(style);
         
         TableView<Asset> table = new TableView<>();
-        table.setItems(getAssets());
+        ObservableList<Asset> assets = FXCollections.observableArrayList();
+        //table.setItems(assets);
         table.getColumns().addAll(nameCol, typeCol, priceCol, quantityCol, totalValCol);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        grid.add(table, 0, 0);
-        profile = new Scene(grid, 500, 500);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY); //prevent an extra column from being created
+        //grid.add(table, 0, 0);
+    
+        Task task = new Task<Void>() {
+            @Override
+            protected Void call() {
+                out.println("get profile");               
+                try {
+                    String serverReply = in.readLine();
+                    while (!serverReply.equals("end")) {
+                        String[] arr = serverReply.split("_"); //eg. parse "aapl_stock" into "appl" and "stock"
+                        String name = arr[0];
+                        String type = arr[1];
+                        int quantity = Integer.parseInt(in.readLine());
+                        double price = Double.parseDouble(in.readLine());      
+                        assets.add(new Asset(name, type, price, quantity));
+                        serverReply = in.readLine();
+                    }
+                } catch (IOException e) {
+                    System.out.println("IOException while getting server reply");
+                }
+                return null;
+            }
+        };
+        
+        new Thread(task).start();
+        task.setOnSucceeded(e -> {
+            table.setItems(assets);
+            grid.add(table, 0, 0);
+            Button homeBtn = new Button("Home");
+            homeBtn.setOnAction(e2 -> {
+                window.setScene(home);
+            });
+            grid.add(homeBtn, 0, 1);
+            profile = new Scene(grid, 500, 500);
+            window.setScene(profile);
+        }); 
     }
     
-    public static ObservableList<Asset> getAssets() {
-        ObservableList<Asset> assets = FXCollections.observableArrayList();
-        assets.add(new Asset("aapl", "stock", 115.43, 2));
-        assets.add(new Asset("goog", "stock", 45.23, 3));
-        assets.add(new Asset("msft", "stock", 94.30, 1));
-        return assets;
+    public static void temp() {
+        Task task = new Task<Void>() {
+            @Override
+            protected Void call() {
+                int i = 0;
+                while (i < 100000) {
+                    System.out.println(i);
+                    i++;
+                }
+                return null;
+            }
+        };
+        
+        new Thread(task).start();
+        task.setOnSucceeded(e -> {
+            Text text = new Text("done loading!");
+            VBox vbox = new VBox(text);
+            profile = new Scene(vbox, 500, 500);
+            window.setScene(profile);
+        });      
     }
 
     public static void login() {
@@ -296,8 +349,9 @@ public class Client extends Application {
         task.setOnSucceeded(e -> {
             int result = (int) task.getValue();
             if (result == 0) {
-                String text = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", bal, ")");
+                String text = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", bal, ")");               
                 homeText.setText(text);
+                setupHome();
                 window.setScene(home);
             }
             loginText.textProperty().unbind();
@@ -392,7 +446,11 @@ public class Client extends Application {
                     updateMessage("IOException while getting server reply");
                     return null;
                 }
-                if (serverReply.equals("N/A")) {
+                if (serverReply.equals("fail")) {
+                    textColorProperty.setValue(Color.RED);
+                    updateMessage("failed to retrive price");
+                }
+                else if (serverReply.equals("N/A")) {
                     textColorProperty.setValue(Color.RED);
                     updateMessage("unknown stock symbol");
                 }

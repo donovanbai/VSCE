@@ -92,7 +92,11 @@ public class BuyStockBox {
         } catch (IOException i) {
             System.out.println("IOException while getting server reply");
         }
-        if (serverReply.equals("1")) {
+        if (serverReply.equals("fail")) {
+            msg.setFill(Color.RED);
+            msg.setText("stock price could not be retrieved");
+        }
+        else if (serverReply.equals("1")) {
             msg.setFill(Color.RED);
             msg.setText("insufficient balance!");
         }

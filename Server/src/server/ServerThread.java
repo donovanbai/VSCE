@@ -90,19 +90,27 @@ public class ServerThread extends Thread {
                                 if (inputLine.equals("search stock")) {
                                     String stock = in.readLine();
                                     System.out.println(username + " searched for stock: " + stock);
-                                    String strURL = "https://download.finance.yahoo.com/d/quotes.csv?s=" + stock + "&f=l1";
-                                    URL stockURL = new URL(strURL);
-                                    BufferedReader in2 = new BufferedReader(new InputStreamReader(stockURL.openStream()));
-                                    String stockPrice = in2.readLine(); //yahoo returns "N/A" if stock doesn't exist
+                                    String stockPrice = null;
+                                    try {
+                                        stockPrice = getStockPrice(stock);
+                                    } catch (Exception e) {
+                                        System.out.println(e.getMessage());
+                                        out.println("fail");
+                                        continue;
+                                    }
                                     out.println(stockPrice);
                                 }
                                 else if (inputLine.equals("buy stock")) {
                                     String stock = in.readLine();
                                     int quantity = Integer.parseInt(in.readLine());
-                                    String strURL = "https://download.finance.yahoo.com/d/quotes.csv?s=" + stock + "&f=l1";
-                                    URL stockURL = new URL(strURL);
-                                    BufferedReader in2 = new BufferedReader(new InputStreamReader(stockURL.openStream()));
-                                    String stockPrice = in2.readLine();
+                                    String stockPrice = null;
+                                    try {
+                                        stockPrice = getStockPrice(stock);
+                                    } catch (Exception e) {
+                                        System.out.println(e.getMessage());
+                                        out.println("fail");
+                                        continue;
+                                    }
                                     if (stockPrice.equals("N/A")) continue;
                                     
                                     //add stock to user's account
@@ -134,6 +142,29 @@ public class ServerThread extends Thread {
                                     System.out.println(username + " purchased " + Integer.toString(quantity) + " shares of " + stock);
                                     out.println(0);
                                     out.println(newBal);
+                                }
+                                else if (inputLine.equals("get profile")) {
+                                    System.out.println(username + " is viewing their profile");
+                                    Iterable<Map.Entry<String, Object>> i = user.attributes();
+                                    for (Map.Entry e : i) {
+                                        if (!(e.getKey().equals("username") || e.getKey().equals("password") || e.getKey().equals("balance"))) {
+                                            out.println(e.getKey());
+                                            out.println(e.getValue());
+                                            String[] arr = e.getKey().toString().split("_");
+                                            String name = arr[0];
+                                            String type = arr[1];
+                                            if (type.equals("stock")) {
+                                                String stockPrice = null;
+                                                try {
+                                                    stockPrice = getStockPrice(name);
+                                                } catch (Exception e2) {
+                                                    System.out.print(e2.getMessage());
+                                                }
+                                                out.println(stockPrice);
+                                            }
+                                        }
+                                    }
+                                    out.println("end");
                                 }
                                 else if (inputLine.equals("logout")) {
                                     System.out.println(username + " logged out");
@@ -181,5 +212,15 @@ public class ServerThread extends Thread {
         Region usWest2 = Region.getRegion(Regions.US_WEST_2);
         client.setRegion(usWest2);
         dynamoDB = new DynamoDB(client);
+    }
+    
+    private String getStockPrice(String stock) throws Exception {
+        String strURL = "https://download.finance.yahoo.com/d/quotes.csv?s=" + stock + "&f=l1";
+        URL stockURL = new URL(strURL);
+        String stockPrice;
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(stockURL.openStream()))) {
+            stockPrice = in.readLine(); //yahoo returns "N/A" if stock doesn't exist
+        }
+        return stockPrice;
     }
 }
