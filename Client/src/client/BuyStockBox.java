@@ -82,6 +82,18 @@ public class BuyStockBox {
     }
     
     public void buyStock(DoubleWrapper bal) {
+        try {
+            Integer.parseInt(qField.getText());
+        } catch (NumberFormatException e) {
+            msg.setFill(Color.RED);
+            msg.setText("invalid input");
+            return;
+        }
+        if (Integer.parseInt(qField.getText()) < 1) {
+            msg.setFill(Color.RED);
+            msg.setText("quantity has to be > 0");
+            return;
+        }
         msg.setFill(Color.GREEN);
         msg.setText("loading...");
         out.println("buy stock");
