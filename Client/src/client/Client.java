@@ -38,7 +38,8 @@ public class Client extends Application {
     static Button buyBtn = new Button("Buy");
     
     static String  stock;
-    static double bal, price;
+    static double price;
+    static DoubleWrapper bal;
     
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -317,7 +318,7 @@ public class Client extends Application {
                 }
                 if (serverReply.equals("0")) {
                     try {
-                        bal = Double.parseDouble(in.readLine());
+                        bal = new DoubleWrapper(Double.parseDouble(in.readLine()));
                     } catch (IOException e) {
                         textColorProperty.setValue(Color.RED);
                         updateMessage("IOException while getting server reply");
@@ -349,7 +350,7 @@ public class Client extends Application {
         task.setOnSucceeded(e -> {
             int result = (int) task.getValue();
             if (result == 0) {
-                String text = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", bal, ")");               
+                String text = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", bal.val, ")");               
                 homeText.setText(text);
                 setupHome();
                 window.setScene(home);
@@ -372,7 +373,7 @@ public class Client extends Application {
                 textColorProperty.setValue(Color.GREEN);
                 updateMessage("connecting...");
                 try {
-                    hostIP = InetAddress.getByName("162.156.144.68");
+                    hostIP = InetAddress.getLocalHost();
                     socket = new Socket(hostIP, portNumber);
                     out = new PrintWriter(socket.getOutputStream(), true);
                     in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -470,6 +471,7 @@ public class Client extends Application {
         task.setOnSucceeded(e -> {
             homeText2.textProperty().unbind();
             homeText2.fillProperty().unbind();
+            buyBtn.visibleProperty().unbind();
         });
     }
     

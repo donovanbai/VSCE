@@ -38,7 +38,8 @@ public class ClientLocal extends Application {
     static Button buyBtn = new Button("Buy");
     
     static String  stock;
-    static double bal, price;
+    static double price;
+    static DoubleWrapper bal;
     
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -317,7 +318,7 @@ public class ClientLocal extends Application {
                 }
                 if (serverReply.equals("0")) {
                     try {
-                        bal = Double.parseDouble(in.readLine());
+                        bal = new DoubleWrapper(Double.parseDouble(in.readLine()));
                     } catch (IOException e) {
                         textColorProperty.setValue(Color.RED);
                         updateMessage("IOException while getting server reply");
@@ -349,7 +350,7 @@ public class ClientLocal extends Application {
         task.setOnSucceeded(e -> {
             int result = (int) task.getValue();
             if (result == 0) {
-                String text = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", bal, ")");               
+                String text = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", bal.val, ")");               
                 homeText.setText(text);
                 setupHome();
                 window.setScene(home);

@@ -1,5 +1,6 @@
 package client;
 
+import client.DoubleWrapper;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -28,7 +29,7 @@ public class BuyStockBox {
     Text msg = new Text();
     Text balText, homeText;
 
-    public void display(String stock, double price, double bal, Text homeText, String username, PrintWriter out, BufferedReader in) {
+    public void display(String stock, double price, DoubleWrapper bal, Text homeText, String username, PrintWriter out, BufferedReader in) {
         this.out = out;
         this.in = in;
         this.stock = stock;
@@ -43,7 +44,7 @@ public class BuyStockBox {
         grid.setHgap(10);
         grid.setVgap(10);
         
-        String s = String.format("%s $%,.2f", "your balance:", bal);
+        String s = String.format("%s $%,.2f", "your balance:", bal.val);
         balText = new Text(s);
         grid.add(balText, 1, 0);
         
@@ -51,7 +52,7 @@ public class BuyStockBox {
         grid.add(quantity, 0, 1);
         
         qField.setOnAction(e -> {
-            
+            buyStock(bal);
         });
         grid.add(qField, 1, 1);
 
@@ -72,7 +73,7 @@ public class BuyStockBox {
         grid.add(msg, 1, 4);
         
         buyBtn.setOnAction(e -> {
-            buyStock();
+            buyStock(bal);
         });
         
         Scene scene = new Scene(grid, 300, 200);
@@ -80,7 +81,7 @@ public class BuyStockBox {
         window.showAndWait();
     }
     
-    public void buyStock() {
+    public void buyStock(DoubleWrapper bal) {
         msg.setFill(Color.GREEN);
         msg.setText("loading...");
         out.println("buy stock");
@@ -109,6 +110,7 @@ public class BuyStockBox {
                 balText.setText(s2);
                 String s3 = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", newBal, ")");
                 homeText.setText(s3);
+                bal.val = newBal;
             } catch (IOException i) {
                 System.out.println("IOException while getting server reply");
             }
