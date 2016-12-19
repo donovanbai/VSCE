@@ -37,7 +37,7 @@ public class Client extends Application {
     static String username, pw;
     static Button buyBtn = new Button("Buy");
     
-    static String  stock;
+    static String stock, currency;
     static double price;
     static DoubleWrapper bal;
     
@@ -58,21 +58,28 @@ public class Client extends Application {
         grid.setHgap(15);
         grid.setVgap(15);
 
-        Text scenetitle = new Text("Welcome to VSCE");
-        scenetitle.setFont(Font.font("Tahoma", FontWeight.NORMAL, 20));
-        grid.add(scenetitle, 0, 0, 2, 1); //column, row, column span, row span
+        Text scenetitle = new Text("Welcome to VSCE\n");
+        scenetitle.setFont(Font.font("Calibri", FontWeight.BOLD, 30));
+        grid.add(scenetitle, 0, 0); //column, row
+        GridPane.setHalignment(scenetitle, HPos.CENTER);
 
         Label userLabel = new Label("Username:");
-        grid.add(userLabel, 0, 1);
-
+        userLabel.setFont(Font.font("Calibri", 20));
         TextField userField = new TextField();
-        grid.add(userField, 1, 1);
+        userField.setFont(Font.font("Calibri", 20));
+        HBox hbox = new HBox(15);
+        hbox.getChildren().addAll(userLabel, userField);
+        grid.add(hbox, 0, 1);
+        GridPane.setHalignment(hbox, HPos.CENTER);
 
         Label pwLabel = new Label("Password:");
-        grid.add(pwLabel, 0, 2);
-
+        pwLabel.setFont(Font.font("Calibri", 20));
         PasswordField pwField = new PasswordField();
-        grid.add(pwField, 1, 2);
+        pwField.setFont(Font.font("Calibri", 20));
+        HBox hbox2 = new HBox(15);
+        hbox2.getChildren().addAll(pwLabel, pwField);
+        grid.add(hbox2, 0, 2);
+        GridPane.setHalignment(hbox2, HPos.CENTER);
         
         userField.setOnAction(e -> {
             username = userField.getText();
@@ -86,9 +93,12 @@ public class Client extends Application {
             login(); 
         });
         
-        grid.add(loginText, 1, 6);
+        loginText.setFont(Font.font("Calibri", 20));
+        grid.add(loginText, 0, 6);
+        GridPane.setHalignment(loginText, HPos.CENTER);
 
         Button signInBtn = new Button("Sign in");
+        signInBtn.setFont(Font.font("Calibri", 20));
         signInBtn.setOnAction(e -> {
             username = userField.getText();
             pw = pwField.getText();
@@ -96,6 +106,7 @@ public class Client extends Application {
         });
         
         Button registerBtn = new Button("Register");
+        registerBtn.setFont(Font.font("Calibri", 20));
         registerBtn.setOnAction(e -> {
             username = userField.getText();
             pw = pwField.getText();
@@ -105,7 +116,8 @@ public class Client extends Application {
         HBox hbButton = new HBox(20);
         hbButton.setAlignment(Pos.BOTTOM_RIGHT);
         hbButton.getChildren().addAll(signInBtn, registerBtn);
-        grid.add(hbButton, 0, 4, 2, 1);
+        grid.add(hbButton, 0, 4);
+        GridPane.setHalignment(hbButton, HPos.CENTER);
 
         //grid.setGridLinesVisible(true);
 
@@ -119,26 +131,30 @@ public class Client extends Application {
         grid.setHgap(15);
         grid.setVgap(15);
         
-        homeText.setFont(Font.font("Tahoma", FontWeight.NORMAL, 20));
+        homeText.setFont(Font.font("Calibri", 30));
         grid.add(homeText, 0, 0); 
         GridPane.setHalignment(homeText, HPos.CENTER);
         
         Button profBtn = new Button("View profile");
+        profBtn.setFont(Font.font("Calibri", 20));
         profBtn.setOnAction(e -> {
             setupProfile();
         });        
         grid.add(profBtn, 0, 2);
         GridPane.setHalignment(profBtn, HPos.CENTER);
         
-        Label stockLabel = new Label("search for a stock");
+        Label stockLabel = new Label("search for a stock (eg. aapl)");
+        stockLabel.setFont(Font.font("Calibri", 20));
         
         TextField stockField = new TextField();
+        stockField.setFont(Font.font("Calibri", 20));
         stockField.setOnAction(e -> {
             stock = stockField.getText();
             searchStock();  
         });
         
         Button stockBtn = new Button("search");
+        stockBtn.setFont(Font.font("Calibri", 20));
         stockBtn.setOnAction(e -> {
             stock = stockField.getText();
             searchStock();
@@ -148,19 +164,44 @@ public class Client extends Application {
         hbox.getChildren().addAll(stockLabel, stockField, stockBtn);
         grid.add(hbox, 0, 5);
         GridPane.setHalignment(hbox, HPos.CENTER);
+           
+        Label currencyLabel = new Label("search for a currency pair\n(eg. usd/cad)");
+        currencyLabel.setFont(Font.font("Calibri", 20));
         
+        TextField currencyField = new TextField();
+        currencyField.setFont(Font.font("Calibri", 20));
+        currencyField.setOnAction(e -> {
+            currency = currencyField.getText();
+            searchCurrency();
+        });
+        
+        Button currencyBtn = new Button("search");
+        currencyBtn.setFont(Font.font("Calibri", 20));
+        currencyBtn.setOnAction(e -> {
+            currency = currencyField.getText();
+            searchCurrency();
+        });
+        
+        HBox hbox2 = new HBox(15);
+        hbox2.getChildren().addAll(currencyLabel, currencyField, currencyBtn);
+        grid.add(hbox2, 0, 6);
+        GridPane.setHalignment(hbox2, HPos.CENTER);
+        
+        buyBtn.setVisible(false);
+        buyBtn.setFont(Font.font("Calibri", 20));
         buyBtn.setOnAction(e -> {
             BuyStockBox box = new BuyStockBox();
             box.display(stock, price, bal, homeText, username, out, in);
         });
-        buyBtn.setVisible(false);
-        HBox hbox2 = new HBox(15);
-        hbox2.getChildren().addAll(homeText2, buyBtn);   
-        grid.add(hbox2, 0, 6);
-        GridPane.setHalignment(hbox2, HPos.CENTER);
-        GridPane.setFillWidth(hbox2, false); //otherwise hbox2 would be too wide
+        HBox hbox4 = new HBox(15);
+        homeText2.setFont(Font.font("Calibri", 20));
+        hbox4.getChildren().addAll(homeText2, buyBtn);   
+        grid.add(hbox4, 0, 8);
+        GridPane.setHalignment(hbox4, HPos.CENTER);
+        GridPane.setFillWidth(hbox4, false); //otherwise hbox2 would be too wide
         
         Button logoutBtn = new Button("Logout");
+        logoutBtn.setFont(Font.font("Calibri", 20));
         logoutBtn.setOnAction(e -> {
             loginText.setText("");
             window.setScene(login);
@@ -171,11 +212,11 @@ public class Client extends Application {
                 System.out.println(i.getMessage());
             }
         });
-        grid.add(logoutBtn, 0, 7);
+        grid.add(logoutBtn, 0, 9);
         GridPane.setHalignment(logoutBtn, HPos.RIGHT);
       
         //grid.setGridLinesVisible(true);
-        home = new Scene(grid, 500, 500);
+        home = new Scene(grid, 700, 500);
     }
     
     public static void setupProfile() {
@@ -191,7 +232,7 @@ public class Client extends Application {
         grid.setHgap(15);
         grid.setVgap(15);
         
-        String style = "-fx-alignment: CENTER;";
+        String style = "-fx-alignment: CENTER; -fx-font-family: Calibri; -fx-font-size: 20";
         
         TableColumn<Asset, String> nameCol = new TableColumn<>("Name");
         //nameCol.setMinWidth(200);
@@ -219,6 +260,8 @@ public class Client extends Application {
         totalValCol.setStyle(style);
         
         TableView<Asset> table = new TableView<>();
+        table.setMinWidth(600);
+        //table.setStyle(style);
         ObservableList<Asset> assets = FXCollections.observableArrayList();
         //table.setItems(assets);
         table.getColumns().addAll(nameCol, typeCol, priceCol, quantityCol, totalValCol);
@@ -252,35 +295,15 @@ public class Client extends Application {
             table.setItems(assets);
             grid.add(table, 0, 0);
             Button homeBtn = new Button("Home");
+            homeBtn.setFont(Font.font("Calibri", 20));
             homeBtn.setOnAction(e2 -> {
                 window.setScene(home);
             });
             grid.add(homeBtn, 0, 1);
-            profile = new Scene(grid, 500, 500);
+            GridPane.setHalignment(homeBtn, HPos.RIGHT);
+            profile = new Scene(grid, 700, 500);
             window.setScene(profile);
         }); 
-    }
-    
-    public static void temp() {
-        Task task = new Task<Void>() {
-            @Override
-            protected Void call() {
-                int i = 0;
-                while (i < 100000) {
-                    System.out.println(i);
-                    i++;
-                }
-                return null;
-            }
-        };
-        
-        new Thread(task).start();
-        task.setOnSucceeded(e -> {
-            Text text = new Text("done loading!");
-            VBox vbox = new VBox(text);
-            profile = new Scene(vbox, 500, 500);
-            window.setScene(profile);
-        });      
     }
 
     public static void login() {
@@ -454,6 +477,57 @@ public class Client extends Application {
                 else if (serverReply.equals("N/A")) {
                     textColorProperty.setValue(Color.RED);
                     updateMessage("unknown stock symbol");
+                }
+                else {
+                    price = Double.parseDouble(serverReply);
+                    textColorProperty.setValue(Color.GREEN);
+                    updateMessage("last trade: $" + serverReply);
+                    showBuyBtn.setValue(true);
+                }
+                return null;
+            }
+        };
+        
+        homeText2.fillProperty().bind(textColorProperty);
+        homeText2.textProperty().bind(task.messageProperty());       
+        new Thread(task).start(); 
+        task.setOnSucceeded(e -> {
+            homeText2.textProperty().unbind();
+            homeText2.fillProperty().unbind();
+            buyBtn.visibleProperty().unbind();
+        });
+    }
+    
+    public static void searchCurrency() {
+        price = 0;
+        BooleanProperty showBuyBtn = new SimpleBooleanProperty(false);
+        buyBtn.visibleProperty().bind(showBuyBtn);
+        ObjectProperty textColorProperty = new SimpleObjectProperty();
+        Task task = new Task<Void>() {
+            @Override
+            protected Void call() {              
+                if (currency.equals("")) {
+                    textColorProperty.setValue(Color.RED);
+                    updateMessage("field cannot be empty");
+                    return null;
+                }
+                out.println("search currency");
+                out.println(currency);
+                String serverReply; // NEED TO WRITE SERVER SIDE CODE
+                try {
+                    serverReply = in.readLine();
+                } catch (IOException i) {
+                    textColorProperty.setValue(Color.RED);
+                    updateMessage("IOException while getting server reply");
+                    return null;
+                }
+                if (serverReply.equals("fail")) {
+                    textColorProperty.setValue(Color.RED);
+                    updateMessage("failed to retrive price");
+                }
+                else if (serverReply.equals("N/A")) {
+                    textColorProperty.setValue(Color.RED);
+                    updateMessage("unknown currency");
                 }
                 else {
                     price = Double.parseDouble(serverReply);

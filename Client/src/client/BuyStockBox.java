@@ -1,6 +1,5 @@
 package client;
 
-import client.DoubleWrapper;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -8,13 +7,16 @@ import java.util.Locale;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
+import javafx.geometry.HPos;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -41,20 +43,27 @@ public class BuyStockBox {
         
         GridPane grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
-        grid.setHgap(10);
-        grid.setVgap(10);
+        grid.setHgap(15);
+        grid.setVgap(15);
         
-        String s = String.format("%s $%,.2f", "your balance:", bal.val);
+        String s = String.format("%s $%,.2f\n", "your balance:", bal.val);
         balText = new Text(s);
-        grid.add(balText, 1, 0);
+        balText.setFont(Font.font("Calibri", 20));
+        grid.add(balText, 0, 0);
+        GridPane.setHalignment(balText, HPos.CENTER);
         
         Label quantity = new Label("quantity");
-        grid.add(quantity, 0, 1);
+        quantity.setFont(Font.font("Calibri", 20));
         
+        qField.setFont(Font.font("Calibri", 20));
         qField.setOnAction(e -> {
             buyStock(bal);
         });
-        grid.add(qField, 1, 1);
+        
+        HBox hbox = new HBox(15);
+        hbox.getChildren().addAll(quantity, qField);
+        grid.add(hbox, 0, 1);
+        GridPane.setHalignment(hbox, HPos.CENTER);
 
         Text costText = new Text();
         
@@ -64,19 +73,24 @@ public class BuyStockBox {
         Locale locale = Locale.CANADA;
         costText.textProperty().bind(Bindings.format(locale, "estimated cost: $%,.2f", ip.multiply(price)));
         
+        costText.setFont(Font.font("Calibri", 20));
         costText.setFill(Color.GREEN);
-        grid.add(costText, 1, 2);
+        grid.add(costText, 0, 2);
+        GridPane.setHalignment(costText, HPos.CENTER);
         
         Button buyBtn = new Button("Buy now");
-        grid.add(buyBtn, 1, 3);
-        
-        grid.add(msg, 1, 4);
-        
+        buyBtn.setFont(Font.font("Calibri", 20));
         buyBtn.setOnAction(e -> {
             buyStock(bal);
         });
+        grid.add(buyBtn, 0, 3);
+        GridPane.setHalignment(buyBtn, HPos.CENTER);
         
-        Scene scene = new Scene(grid, 300, 200);
+        msg.setFont(Font.font("Calibri", 20));
+        grid.add(msg, 0, 5);
+        GridPane.setHalignment(msg, HPos.CENTER);
+          
+        Scene scene = new Scene(grid, 400, 300);
         window.setScene(scene);
         window.showAndWait();
     }
