@@ -138,14 +138,16 @@ public class ServerThread extends Thread {
                                             .withNumber(":v1", prevQuantity + quantity)
                                             .withNumber(":v2", newBal));
                                     UpdateItemOutcome outcome = table.updateItem(update);
-                                    //let client know their new balance
+                                    user = table.getItem("username", username); // fetch updated user
+                                    // logging
                                     System.out.println(username + " purchased " + Integer.toString(quantity) + " shares of " + stock);
+                                    System.out.println(username + "'s new balance: " + newBal);
+                                    // let client know transaction succeeded and send their new balance
                                     out.println(0);
                                     out.println(newBal);
                                 }
                                 else if (inputLine.equals("get profile")) {
                                     System.out.println(username + " is viewing their profile");
-                                    user = table.getItem("username", username);
                                     Iterable<Map.Entry<String, Object>> i = user.attributes();
                                     for (Map.Entry e : i) {
                                         if (!(e.getKey().equals("username") || e.getKey().equals("password") || e.getKey().equals("balance"))) {
