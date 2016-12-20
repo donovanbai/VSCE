@@ -17,6 +17,8 @@ import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.document.UpdateItemOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.UpdateItemSpec;
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public class ServerThread extends Thread {
     private Socket socket;
@@ -83,7 +85,7 @@ public class ServerThread extends Thread {
                         else {
                             System.out.println(username + " logged in from " + socket.getInetAddress().getHostAddress());
                             out.println("0");
-                            out.println(user.getDouble("balance"));
+                            out.println(user.getString("balance")); // use getString because getDouble is not exact
 
                             while (true) {
                                 inputLine = in.readLine();
@@ -114,9 +116,13 @@ public class ServerThread extends Thread {
                                     if (stockPrice.equals("N/A")) continue;
                                     
                                     //add stock to user's account
-                                    double cost = quantity * Double.parseDouble(stockPrice);
-                                    double userBal = user.getDouble("balance");
-                                    if (cost > userBal) {
+                                    BigDecimal stockPriceBigDec = new BigDecimal(stockPrice);
+                                    BigDecimal cost = stockPriceBigDec.multiply(new BigDecimal(quantity));
+                                    // cost could have more than 2 decimal places so round up
+                                    cost = cost.setScale(2, RoundingMode.UP);
+                                    System.out.println(cost);
+                                    BigDecimal userBal = new BigDecimal(user.getString("balance"));
+                                    if (cost.compareTo(userBal) == 1) { // if cost > userBal
                                         System.out.println(username + " tried to purchase too many shares");
                                         out.println(1);
                                         continue;
@@ -130,7 +136,7 @@ public class ServerThread extends Thread {
                                         prevQuantity = user.getInt(stock + "_stock");
                                     }
                                     //add stock to user's account and deduct balance
-                                    double newBal = userBal - cost;
+                                    BigDecimal newBal = userBal.subtract(cost);
                                     UpdateItemSpec update = new UpdateItemSpec()
                                         .withPrimaryKey("username", username)
                                         .withUpdateExpression("set " + stock + "_stock = :v1, balance = :v2")

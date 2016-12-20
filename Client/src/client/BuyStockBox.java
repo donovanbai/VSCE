@@ -3,6 +3,7 @@ package client;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.math.BigDecimal;
 import java.util.Locale;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.IntegerProperty;
@@ -31,7 +32,7 @@ public class BuyStockBox {
     Text msg = new Text();
     Text balText, homeText;
 
-    public void display(String stock, double price, DoubleWrapper bal, Text homeText, String username, PrintWriter out, BufferedReader in) {
+    public void display(String stock, BigDecimal price, BigDecimalWrapper bal, Text homeText, String username, PrintWriter out, BufferedReader in) {
         this.out = out;
         this.in = in;
         this.stock = stock;
@@ -46,7 +47,7 @@ public class BuyStockBox {
         grid.setHgap(15);
         grid.setVgap(15);
         
-        String s = String.format("%s $%,.2f\n", "your balance:", bal.val);
+        String s = String.format("%s $%,.2f\n", "your balance:", bal.bd);
         balText = new Text(s);
         balText.setFont(Font.font("Calibri", 20));
         grid.add(balText, 0, 0);
@@ -71,7 +72,7 @@ public class BuyStockBox {
         StringConverter<Number> converter = new NumberStringConverter();
         Bindings.bindBidirectional(qField.textProperty(), ip, converter);    
         Locale locale = Locale.CANADA;
-        costText.textProperty().bind(Bindings.format(locale, "estimated cost: $%,.2f", ip.multiply(price)));
+        costText.textProperty().bind(Bindings.format(locale, "estimated cost: $%,.2f", ip.multiply(price.doubleValue())));
         
         costText.setFont(Font.font("Calibri", 20));
         costText.setFill(Color.GREEN);
@@ -95,7 +96,7 @@ public class BuyStockBox {
         window.showAndWait();
     }
     
-    public void buyStock(DoubleWrapper bal) {
+    public void buyStock(BigDecimalWrapper bal) {
         try {
             Integer.parseInt(qField.getText());
         } catch (NumberFormatException e) {
@@ -131,12 +132,12 @@ public class BuyStockBox {
             msg.setFill(Color.GREEN);
             msg.setText("purchase complete!"); 
             try {
-                Double newBal = Double.parseDouble(in.readLine());
+                BigDecimal newBal = new BigDecimal(in.readLine());
                 String s2 = String.format("%s $%,.2f", "your balance:", newBal);
                 balText.setText(s2);
                 String s3 = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", newBal, ")");
                 homeText.setText(s3);
-                bal.val = newBal;
+                bal.bd = newBal;
             } catch (IOException i) {
                 System.out.println("IOException while getting server reply");
             }

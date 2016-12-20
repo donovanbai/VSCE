@@ -1,6 +1,7 @@
 package client;
 
 import java.io.*;
+import java.math.BigDecimal;
 import java.net.*;
 
 import javafx.application.Application;
@@ -38,8 +39,8 @@ public class ClientLocal extends Application {
     static Button buyBtn = new Button("Buy");
     
     static String stock, currency;
-    static double price;
-    static DoubleWrapper bal;
+    static BigDecimal price;
+    static BigDecimalWrapper bal;
     
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -279,7 +280,7 @@ public class ClientLocal extends Application {
                         String name = arr[0];
                         String type = arr[1];
                         int quantity = Integer.parseInt(in.readLine());
-                        double price = Double.parseDouble(in.readLine());      
+                        BigDecimal price = new BigDecimal(in.readLine());      
                         assets.add(new Asset(name, type, price, quantity));
                         serverReply = in.readLine();
                     }
@@ -341,7 +342,7 @@ public class ClientLocal extends Application {
                 }
                 if (serverReply.equals("0")) {
                     try {
-                        bal = new DoubleWrapper(Double.parseDouble(in.readLine()));
+                        bal = new BigDecimalWrapper(new BigDecimal(in.readLine()));
                     } catch (IOException e) {
                         textColorProperty.setValue(Color.RED);
                         updateMessage("IOException while getting server reply");
@@ -373,7 +374,7 @@ public class ClientLocal extends Application {
         task.setOnSucceeded(e -> {
             int result = (int) task.getValue();
             if (result == 0) {
-                String text = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", bal.val, ")");               
+                String text = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", bal.bd, ")");               
                 homeText.setText(text);
                 setupHome();
                 window.setScene(home);
@@ -448,7 +449,7 @@ public class ClientLocal extends Application {
     } 
     
     public static void searchStock() {
-        price = 0;
+        //price = 0;
         BooleanProperty showBuyBtn = new SimpleBooleanProperty(false);
         buyBtn.visibleProperty().bind(showBuyBtn);
         ObjectProperty textColorProperty = new SimpleObjectProperty();
@@ -479,7 +480,7 @@ public class ClientLocal extends Application {
                     updateMessage("unknown stock symbol");
                 }
                 else {
-                    price = Double.parseDouble(serverReply);
+                    price = new BigDecimal(serverReply);
                     textColorProperty.setValue(Color.GREEN);
                     updateMessage("last trade: $" + serverReply);
                     showBuyBtn.setValue(true);
@@ -499,7 +500,7 @@ public class ClientLocal extends Application {
     }
     
     public static void searchCurrency() {
-        price = 0;
+        //price = 0;
         BooleanProperty showBuyBtn = new SimpleBooleanProperty(false);
         buyBtn.visibleProperty().bind(showBuyBtn);
         ObjectProperty textColorProperty = new SimpleObjectProperty();
@@ -530,7 +531,7 @@ public class ClientLocal extends Application {
                     updateMessage("unknown currency");
                 }
                 else {
-                    price = Double.parseDouble(serverReply);
+                    price = new BigDecimal(serverReply);
                     textColorProperty.setValue(Color.GREEN);
                     updateMessage("last trade: $" + serverReply);
                     showBuyBtn.setValue(true);

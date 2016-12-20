@@ -1,25 +1,29 @@
 package client;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 public class Asset {
     private String name;
     private String type;
-    private double price;
+    private BigDecimal price;
     private int quantity;
-    private double totalVal;
+    private BigDecimal totalVal;
     
     public Asset() {
         name = "";
         type = "";
-        price = 0;
+        price = new BigDecimal("0");
         quantity = 0;
-        totalVal = 0;
+        totalVal = new BigDecimal("0");
     }
-    public Asset(String name, String type, double price, int quantity) {
+    public Asset(String name, String type, BigDecimal price, int quantity) {
         this.name = name;
         this.type = type;
         this.price = price;
         this.quantity = quantity;
-        this.totalVal = price * quantity;
+        this.totalVal = price.multiply(new BigDecimal(quantity));
+        this.totalVal = this.totalVal.setScale(2, RoundingMode.UP); // round totalVal to 2 decimal places
     }
 
     public String getName() {
@@ -38,12 +42,14 @@ public class Asset {
         this.type = type;
     }
 
-    public double getPrice() {
+    public BigDecimal getPrice() {
         return price;
     }
 
-    public void setPrice(double price) {
+    public void setPrice(BigDecimal price) {
         this.price = price;
+        totalVal = price.multiply(new BigDecimal(quantity));
+        totalVal = totalVal.setScale(2, RoundingMode.UP);
     }
 
     public int getQuantity() {
@@ -52,9 +58,11 @@ public class Asset {
 
     public void setQuantity(int quantity) {
         this.quantity = quantity;
+        totalVal = price.multiply(new BigDecimal(quantity));
+        totalVal = totalVal.setScale(2, RoundingMode.UP);
     }
 
-    public double getTotalVal() {
+    public BigDecimal getTotalVal() {
         return totalVal;
     }
 }
