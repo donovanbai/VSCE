@@ -13,6 +13,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -24,73 +25,85 @@ import javafx.stage.Stage;
 import javafx.util.StringConverter;
 import javafx.util.converter.NumberStringConverter;
 
-public class BuyStockBox {
+public class SellAssetBox {
     PrintWriter out;
     BufferedReader in;
     String stock, username;
     TextField qField = new TextField();
     Text msg = new Text();
-    Text balText, homeText;
+    Text balText, homeText, qText;
+    int quantityOwned, row;
     BigDecimalWrapper bal;
-
-    public void display(String stock, BigDecimal price, BigDecimalWrapper bal, Text homeText, String username, PrintWriter out, BufferedReader in) {
-        this.out = out;
-        this.in = in;
+    TableView<Asset> table;
+    
+    public void display(String stock, BigDecimal price, BigDecimalWrapper bal, int quantityOwned, Text homeText, String username, TableView<Asset> table, int row, PrintWriter out, BufferedReader in) {
         this.stock = stock;
         this.homeText = homeText;
         this.username = username;
+        this.table = table;
+        this.row = row;
+        this.out = out;
+        this.in = in;
+        this.quantityOwned = quantityOwned;
         this.bal = bal;
+        
         Stage window = new Stage();
         window.initModality(Modality.APPLICATION_MODAL);
-        window.setTitle("Buy " + stock);
+        window.setTitle("Sell " + stock);
         
         GridPane grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
         grid.setHgap(15);
         grid.setVgap(15);
         
-        String s = String.format("%s $%,.2f\n", "your balance:", bal.bd);
+        String s = String.format("%s $%,.2f", "your balance:", bal.bd);
         balText = new Text(s);
         balText.setFont(Font.font("Calibri", 20));
         grid.add(balText, 0, 0);
         GridPane.setHalignment(balText, HPos.CENTER);
+        
+        String s2 = "shares owned: " + quantityOwned + "\n";
+        qText = new Text(s2);
+        qText.setFont(Font.font("Calibri", 20));
+        grid.add(qText, 0, 1);
+        GridPane.setHalignment(qText, HPos.CENTER);
         
         Label quantity = new Label("quantity");
         quantity.setFont(Font.font("Calibri", 20));
         
         qField.setFont(Font.font("Calibri", 20));
         qField.setOnAction(e -> {
-            buyStock();
+            sellStock();
         });
         
         HBox hbox = new HBox(15);
         hbox.getChildren().addAll(quantity, qField);
-        grid.add(hbox, 0, 1);
+        grid.add(hbox, 0, 2);
         GridPane.setHalignment(hbox, HPos.CENTER);
 
-        Text costText = new Text();
+        Text totalText = new Text();
         
         IntegerProperty ip = new SimpleIntegerProperty();
         StringConverter<Number> converter = new NumberStringConverter();
         Bindings.bindBidirectional(qField.textProperty(), ip, converter);    
         Locale locale = Locale.CANADA;
-        costText.textProperty().bind(Bindings.format(locale, "estimated cost: $%,.2f", ip.multiply(price.doubleValue())));
+        totalText.textProperty().bind(Bindings.format(locale, "estimated total: $%,.2f", ip.multiply(price.doubleValue())));
         
-        costText.setFont(Font.font("Calibri", 20));
-        costText.setFill(Color.GREEN);
-        grid.add(costText, 0, 2);
-        GridPane.setHalignment(costText, HPos.CENTER);
+        totalText.setFont(Font.font("Calibri", 20));
+        totalText.setFill(Color.GREEN);
+        grid.add(totalText, 0, 3);
+        GridPane.setHalignment(totalText, HPos.CENTER);
         
-        Button buyBtn = new Button("Buy now");
-        buyBtn.setFont(Font.font("Calibri", 20));
-        buyBtn.setOnAction(e -> {
-            buyStock();
+        Button sellBtn = new Button("Sell now");
+        sellBtn.setFont(Font.font("Calibri", 20));
+        sellBtn.setOnAction(e -> {
+            sellStock();
         });
-        grid.add(buyBtn, 0, 3);
-        GridPane.setHalignment(buyBtn, HPos.CENTER);
+        grid.add(sellBtn, 0, 4);
+        GridPane.setHalignment(sellBtn, HPos.CENTER);
         
         msg.setFont(Font.font("Calibri", 20));
-        grid.add(msg, 0, 5);
+        grid.add(msg, 0, 6);
         GridPane.setHalignment(msg, HPos.CENTER);
           
         Scene scene = new Scene(grid, 400, 300);
@@ -98,7 +111,7 @@ public class BuyStockBox {
         window.showAndWait();
     }
     
-    private void buyStock() {
+    private void sellStock() {
         try {
             Integer.parseInt(qField.getText());
         } catch (NumberFormatException e) {
@@ -111,9 +124,14 @@ public class BuyStockBox {
             msg.setText("quantity has to be > 0");
             return;
         }
+        if (Integer.parseInt(qField.getText()) > quantityOwned) {
+            msg.setFill(Color.RED);
+            msg.setText("you do not own that many shares");
+            return;
+        }
         msg.setFill(Color.GREEN);
         msg.setText("loading...");
-        out.println("buy stock");
+        out.println("sell stock");
         out.println(stock);
         out.println(qField.getText());
         String serverReply = null;
@@ -122,24 +140,34 @@ public class BuyStockBox {
         } catch (IOException i) {
             System.out.println("IOException while getting server reply");
         }
-        if (serverReply.equals("fail")) {
+        if (serverReply.equals("fail") || serverReply.equals("N/A")) {
             msg.setFill(Color.RED);
             msg.setText("stock price could not be retrieved");
         }
         else if (serverReply.equals("1")) {
             msg.setFill(Color.RED);
-            msg.setText("insufficient balance!");
+            msg.setText("you do not own that many shares. re-login.");
         }
         else if (serverReply.equals("0")) {
             msg.setFill(Color.GREEN);
-            msg.setText("purchase complete!"); 
+            msg.setText("sale complete!"); 
             try {
                 BigDecimal newBal = new BigDecimal(in.readLine());
+                int newQuantity = Integer.parseInt(in.readLine());
                 String s2 = String.format("%s $%,.2f", "your balance:", newBal);
                 balText.setText(s2);
                 String s3 = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", newBal, ")");
                 homeText.setText(s3);
                 bal.bd = newBal;
+                quantityOwned = newQuantity;
+                qText.setText("shares owned: " + newQuantity + "\n");
+                // update table with new quantity
+                if (newQuantity == 0) table.getItems().remove(row);
+                else {
+                    String type = table.getItems().get(row).getType();
+                    BigDecimal price = table.getItems().get(row).getPrice();
+                    table.getItems().set(row, new Asset(stock, type, price, newQuantity));
+                }
             } catch (IOException i) {
                 System.out.println("IOException while getting server reply");
             }

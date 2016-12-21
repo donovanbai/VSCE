@@ -31,25 +31,23 @@ public class ServerThread extends Thread {
     }
 	
     public void run() {
-	init();
+	init(); // initialize connection to amazon dynamodb
 	Table table = dynamoDB.getTable("users"); 
-        //int portNumber = Integer.parseInt(args[0]);
-
         try ( 
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         ) { 
-            while (true) {
+            while (true) { // process client requests
                 String inputLine = in.readLine();
-                if (inputLine.equals("register")) {
+                if (inputLine.equals("register")) { // account registration
                     username = in.readLine();
                     String pw = in.readLine();
-
                     if (username.equals("") || pw.equals("")) {
-                        continue;
+                        socket.close();
+                        return;
                     }
-
-                    if (table.getItem("username", username) == null) {
+                    if (table.getItem("username", username) != null) out.println("1"); // username already exists
+                    else { 
                         Item newUser = new Item()
                             .withPrimaryKey("username", username)
                             .withString("password", pw)
@@ -60,138 +58,175 @@ public class ServerThread extends Thread {
                         System.out.println("\tpassword: " + pw);
                         out.println("0");
                     }
-                    else {
-                        out.println("1"); //username already exists
-                    }
                     socket.close();
                     return;
                 }
-                else if (inputLine.equals("sign in")) {
+                else if (inputLine.equals("sign in")) { // client login
                     username = in.readLine();
                     String pw = in.readLine();
-
                     if (username.equals("") || pw.equals("")) {
-                        continue;
+                        socket.close();
+                        return;
                     }
-
                     Item user = table.getItem("username", username);
-                    if (user == null) {
-                        out.println("1"); //username doesn't exist
+                    if (user == null) { // username doesn't exist
+                        out.println("1");
+                        socket.close();
+                        return;
                     }
-                    else {
-                        if (!(user.getString("password").equals(pw))) {
-                            out.println("2"); //incorect password
+                    if (!(user.getString("password").equals(pw))) { //incorrect password
+                        out.println("2");
+                        socket.close();
+                        return;
+                    }
+                    System.out.println(username + " logged in from " + socket.getInetAddress().getHostAddress());
+                    out.println("0");
+                    out.println(user.getString("balance")); // use getString because getDouble is not exact
+                    while (true) {
+                        inputLine = in.readLine();
+                        if (inputLine.equals("search stock")) {
+                            String stock = in.readLine();
+                            System.out.println(username + " searched for stock: " + stock);
+                            String stockPrice = null;
+                            try {
+                                stockPrice = getStockPrice(stock);
+                            } catch (Exception e) {
+                                System.out.println(e.getMessage());
+                                out.println("fail");
+                                continue;
+                            }
+                            out.println(stockPrice);
                         }
-                        else {
-                            System.out.println(username + " logged in from " + socket.getInetAddress().getHostAddress());
-                            out.println("0");
-                            out.println(user.getString("balance")); // use getString because getDouble is not exact
-
-                            while (true) {
-                                inputLine = in.readLine();
-                                if (inputLine.equals("search stock")) {
-                                    String stock = in.readLine();
-                                    System.out.println(username + " searched for stock: " + stock);
-                                    String stockPrice = null;
-                                    try {
-                                        stockPrice = getStockPrice(stock);
-                                    } catch (Exception e) {
-                                        System.out.println(e.getMessage());
-                                        out.println("fail");
-                                        continue;
-                                    }
-                                    out.println(stockPrice);
-                                }
-                                else if (inputLine.equals("buy stock")) {
-                                    String stock = in.readLine();
-                                    int quantity = Integer.parseInt(in.readLine());
-                                    String stockPrice = null;
-                                    try {
-                                        stockPrice = getStockPrice(stock);
-                                    } catch (Exception e) {
-                                        System.out.println(e.getMessage());
-                                        out.println("fail");
-                                        continue;
-                                    }
-                                    if (stockPrice.equals("N/A")) continue;
-                                    
-                                    //add stock to user's account
-                                    BigDecimal stockPriceBigDec = new BigDecimal(stockPrice);
-                                    BigDecimal cost = stockPriceBigDec.multiply(new BigDecimal(quantity));
-                                    // cost could have more than 2 decimal places so round up
-                                    cost = cost.setScale(2, RoundingMode.UP);
-                                    System.out.println(cost);
-                                    BigDecimal userBal = new BigDecimal(user.getString("balance"));
-                                    if (cost.compareTo(userBal) == 1) { // if cost > userBal
-                                        System.out.println(username + " tried to purchase too many shares");
-                                        out.println(1);
-                                        continue;
-                                    }
-                                    int prevQuantity;
-                                    boolean b = user.isPresent(stock + "_stock"); //check if user already owns this stock
-                                    if (b == false) {
-                                        prevQuantity = 0;                               
-                                    }
-                                    else {
-                                        prevQuantity = user.getInt(stock + "_stock");
-                                    }
-                                    //add stock to user's account and deduct balance
-                                    BigDecimal newBal = userBal.subtract(cost);
-                                    UpdateItemSpec update = new UpdateItemSpec()
-                                        .withPrimaryKey("username", username)
-                                        .withUpdateExpression("set " + stock + "_stock = :v1, balance = :v2")
-                                        .withValueMap(new ValueMap()
-                                            .withNumber(":v1", prevQuantity + quantity)
-                                            .withNumber(":v2", newBal));
-                                    UpdateItemOutcome outcome = table.updateItem(update);
-                                    user = table.getItem("username", username); // fetch updated user
-                                    // logging
-                                    System.out.println(username + " purchased " + Integer.toString(quantity) + " shares of " + stock);
-                                    System.out.println(username + "'s new balance: " + newBal);
-                                    // let client know transaction succeeded and send their new balance
-                                    out.println(0);
-                                    out.println(newBal);
-                                }
-                                else if (inputLine.equals("get profile")) {
-                                    System.out.println(username + " is viewing their profile");
-                                    Iterable<Map.Entry<String, Object>> i = user.attributes();
-                                    for (Map.Entry e : i) {
-                                        if (!(e.getKey().equals("username") || e.getKey().equals("password") || e.getKey().equals("balance"))) {
-                                            out.println(e.getKey());
-                                            out.println(e.getValue());
-                                            String[] arr = e.getKey().toString().split("_");
-                                            String name = arr[0];
-                                            String type = arr[1];
-                                            if (type.equals("stock")) {
-                                                String stockPrice = null;
-                                                try {
-                                                    stockPrice = getStockPrice(name);
-                                                } catch (Exception e2) {
-                                                    System.out.print(e2.getMessage());
-                                                }
-                                                out.println(stockPrice);
-                                            }
-                                        }
-                                    }
-                                    out.println("end");
-                                }
-                                else if (inputLine.equals("logout")) {
-                                    System.out.println(username + " logged out");
-                                    socket.close();
-                                    return;
-                                }
+                        else if (inputLine.equals("buy stock")) {
+                            String stock = in.readLine();
+                            int quantity = Integer.parseInt(in.readLine());
+                            String stockPrice = null;
+                            try {
+                                stockPrice = getStockPrice(stock);
+                            } catch (Exception e) {
+                                System.out.println(e.getMessage());
+                                out.println("fail");
+                                continue;
+                            }
+                            if (stockPrice.equals("N/A")) {
+                                out.println("N/A");
+                                continue;
                             }
 
-                            //retrieve user data and send to client
-                            /*
+                            BigDecimal stockPriceBigDec = new BigDecimal(stockPrice);
+                            BigDecimal cost = stockPriceBigDec.multiply(new BigDecimal(quantity));
+                            // cost could have more than 2 decimal places so round up
+                            cost = cost.setScale(2, RoundingMode.UP);
+                            BigDecimal userBal = new BigDecimal(user.getString("balance"));
+                            if (cost.compareTo(userBal) == 1) { // if cost > userBal
+                                System.out.println(username + " tried to purchase too many shares");
+                                out.println(1);
+                                continue;
+                            }
+                            int prevQuantity;
+                            boolean b = user.isPresent(stock + "_stock"); //check if user already owns this stock
+                            if (b == false) {
+                                prevQuantity = 0;                               
+                            }
+                            else {
+                                prevQuantity = user.getInt(stock + "_stock");
+                            }
+                            //add stock to user's account and deduct balance
+                            BigDecimal newBal = userBal.subtract(cost);
+                            UpdateItemSpec update = new UpdateItemSpec()
+                                .withPrimaryKey("username", username)
+                                .withUpdateExpression("set " + stock + "_stock = :v1, balance = :v2")
+                                .withValueMap(new ValueMap()
+                                    .withNumber(":v1", prevQuantity + quantity)
+                                    .withNumber(":v2", newBal));
+                            UpdateItemOutcome outcome = table.updateItem(update);
+                            user = table.getItem("username", username); // fetch updated user
+                            // logging
+                            System.out.println(username + " purchased " + Integer.toString(quantity) + " shares of " + stock);
+                            System.out.println(username + "'s new balance: " + newBal);
+                            // let client know transaction succeeded and send their new balance
+                            out.println(0);
+                            out.println(newBal);
+                        }
+                        else if (inputLine.equals("sell stock")) {
+                            String stock = in.readLine();
+                            int quantity = Integer.parseInt(in.readLine());
+                            int quantityOwned = user.getInt(stock + "_stock");
+                            if (quantity > quantityOwned) {
+                                System.out.println(username + " tried to sell too many shares");
+                                out.println(1);
+                                continue;
+                            }
+                            String stockPrice = null;
+                            try {
+                                stockPrice = getStockPrice(stock);
+                            } catch (Exception e) {
+                                System.out.println(e.getMessage());
+                                out.println("fail");
+                                continue;
+                            }
+                            if (stockPrice.equals("N/A")) {
+                                out.println("N/A");
+                                continue;
+                            }
+
+                            BigDecimal stockPriceBigDec = new BigDecimal(stockPrice);
+                            BigDecimal total = stockPriceBigDec.multiply(new BigDecimal(quantity));
+                            // total could have more than 2 decimal places so round up
+                            total = total.setScale(2, RoundingMode.UP);
+                            BigDecimal userBal = new BigDecimal(user.getString("balance"));
+                            //deduct stock from user's account and add balance
+                            BigDecimal newBal = userBal.add(total);
+                            UpdateItemSpec update = new UpdateItemSpec()
+                                .withPrimaryKey("username", username)
+                                .withUpdateExpression("set " + stock + "_stock = :v1, balance = :v2")
+                                .withValueMap(new ValueMap()
+                                    .withNumber(":v1", quantityOwned - quantity)
+                                    .withNumber(":v2", newBal));
+                            UpdateItemOutcome outcome = table.updateItem(update);
+                            user = table.getItem("username", username); // fetch updated user
+                            if (user.getInt(stock + "_stock") == 0) {
+                                update = new UpdateItemSpec()
+                                    .withPrimaryKey("username", username)
+                                    .withUpdateExpression("remove " + stock + "_stock");
+                                outcome = table.updateItem(update);
+                                user = table.getItem("username", username);
+                            }
+                            // logging
+                            System.out.println(username + " sold " + Integer.toString(quantity) + " shares of " + stock);
+                            System.out.println(username + "'s new balance: " + newBal);
+                            // let client know transaction succeeded, send their new balance and new quantity
+                            out.println(0);
+                            out.println(newBal);
+                            out.println(quantityOwned - quantity);
+                        }
+                        else if (inputLine.equals("get profile")) {
+                            System.out.println(username + " is viewing their profile");
                             Iterable<Map.Entry<String, Object>> i = user.attributes();
                             for (Map.Entry e : i) {
-                                if (!(e.getKey().equals("username") || e.getKey().equals("password"))) {
+                                if (!(e.getKey().equals("username") || e.getKey().equals("password") || e.getKey().equals("balance"))) {
                                     out.println(e.getKey());
                                     out.println(e.getValue());
+                                    String[] arr = e.getKey().toString().split("_");
+                                    String name = arr[0];
+                                    String type = arr[1];
+                                    if (type.equals("stock")) {
+                                        String stockPrice = null;
+                                        try {
+                                            stockPrice = getStockPrice(name);
+                                        } catch (Exception e2) {
+                                            System.out.print(e2.getMessage());
+                                        }
+                                        out.println(stockPrice);
+                                    }
                                 }
                             }
-                            */
+                            out.println("end");
+                        }
+                        else if (inputLine.equals("logout")) {
+                            System.out.println(username + " logged out");
+                            socket.close();
+                            return;
                         }
                     }
                 }
