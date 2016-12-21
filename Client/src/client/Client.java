@@ -20,6 +20,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import javafx.util.Callback;
  
 public class Client extends Application {
     
@@ -41,6 +42,7 @@ public class Client extends Application {
     static String stock, currency;
     static BigDecimal price;
     static BigDecimalWrapper bal;
+    TableView table;
     
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -52,7 +54,7 @@ public class Client extends Application {
         window.show();
     }
     
-    public static void setupLogin() {
+    public void setupLogin() {
         GridPane grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
         grid.setPadding(new Insets(25, 25, 25, 25)); //top, right, bottom, left
@@ -61,7 +63,7 @@ public class Client extends Application {
 
         Text scenetitle = new Text("Welcome to VSCE\n");
         scenetitle.setFont(Font.font("Calibri", FontWeight.BOLD, 30));
-        grid.add(scenetitle, 0, 0); //column, row
+        grid.add(scenetitle, 0, 0);
         GridPane.setHalignment(scenetitle, HPos.CENTER);
 
         Label userLabel = new Label("Username:");
@@ -120,12 +122,10 @@ public class Client extends Application {
         grid.add(hbButton, 0, 4);
         GridPane.setHalignment(hbButton, HPos.CENTER);
 
-        //grid.setGridLinesVisible(true);
-
         login = new Scene(grid, 500, 500);       
     }
     
-    public static void setupHome() {
+    public void setupHome() {
         GridPane grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
         grid.setPadding(new Insets(25, 25, 25, 25)); //top, right, bottom, left
@@ -209,18 +209,15 @@ public class Client extends Application {
             out.println("logout");
             try {
                 socket.close();
-            } catch (IOException i) {
-                System.out.println(i.getMessage());
-            }
+            } catch (Exception ex) {} // no need to do anything
         });
         grid.add(logoutBtn, 0, 9);
         GridPane.setHalignment(logoutBtn, HPos.RIGHT);
       
-        //grid.setGridLinesVisible(true);
         home = new Scene(grid, 700, 500);
     }
     
-    public static void setupProfile() {
+    public void setupProfile() {
         //show loading screen while fetching data from server
         Text text = new Text("loading...");
         VBox vbox = new VBox(text);
@@ -236,38 +233,37 @@ public class Client extends Application {
         String style = "-fx-alignment: CENTER; -fx-font-family: Calibri; -fx-font-size: 20";
         
         TableColumn<Asset, String> nameCol = new TableColumn<>("Name");
-        //nameCol.setMinWidth(200);
         nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
         nameCol.setStyle(style); //set text alignment in column
         
         TableColumn<Asset, String> typeCol = new TableColumn<>("Type");
-        //nameCol.setMinWidth(200);
         typeCol.setCellValueFactory(new PropertyValueFactory<>("type"));
         typeCol.setStyle(style);
         
         TableColumn<Asset, Double> priceCol = new TableColumn<>("Price");
-        //nameCol.setMinWidth(200);
         priceCol.setCellValueFactory(new PropertyValueFactory<>("price"));
         priceCol.setStyle(style);
         
         TableColumn<Asset, Integer> quantityCol = new TableColumn<>("Quantity");
-        //nameCol.setMinWidth(200);
         quantityCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
         quantityCol.setStyle(style);
         
         TableColumn<Asset, Double> totalValCol = new TableColumn<>("Total Value");
-        //nameCol.setMinWidth(200);
         totalValCol.setCellValueFactory(new PropertyValueFactory<>("totalVal"));
         totalValCol.setStyle(style);
         
-        TableView<Asset> table = new TableView<>();
-        table.setMinWidth(600);
-        //table.setStyle(style);
+        TableColumn sellCol = new TableColumn("sell");
+        sellCol.setCellFactory(new Callback<TableColumn<Asset, Asset>, TableCell<Asset, Asset>>() {
+            
+            @Override
+            public TableCell<Asset, Asset> call(TableColumn<Asset, Asset> p) {
+                return new ButtonCell();
+            }
+        });
+        sellCol.setStyle(style);
+        sellCol.setSortable(false); // no sense sorting the same button        
+        
         ObservableList<Asset> assets = FXCollections.observableArrayList();
-        //table.setItems(assets);
-        table.getColumns().addAll(nameCol, typeCol, priceCol, quantityCol, totalValCol);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY); //prevent an extra column from being created
-        //grid.add(table, 0, 0);
     
         Task task = new Task<Void>() {
             @Override
@@ -293,7 +289,13 @@ public class Client extends Application {
         
         new Thread(task).start();
         task.setOnSucceeded(e -> {
+            table = new TableView();
+            table.setMinWidth(700);
             table.setItems(assets);
+            table.getColumns().addAll(nameCol, typeCol, priceCol, quantityCol, totalValCol, sellCol);
+            table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY); // prevent an extra column from being created
+            nameCol.setSortType(TableColumn.SortType.ASCENDING);
+            table.getSortOrder().add(nameCol); // default sort assets based on name
             grid.add(table, 0, 0);
             Button homeBtn = new Button("Home");
             homeBtn.setFont(Font.font("Calibri", 20));
@@ -302,12 +304,34 @@ public class Client extends Application {
             });
             grid.add(homeBtn, 0, 1);
             GridPane.setHalignment(homeBtn, HPos.RIGHT);
-            profile = new Scene(grid, 700, 500);
+            profile = new Scene(grid, 800, 500);
             window.setScene(profile);
         }); 
     }
+    
+    private class ButtonCell extends TableCell<Asset, Asset> {
+        Button btn;
+        
+        ButtonCell() {
+            btn = new Button("sell");
+            btn.setOnAction(e->{
+                SellAssetBox box = new SellAssetBox();
+                Asset a = getTableView().getItems().get(getIndex());
+                stock = a.getName();
+                price = a.getPrice();
+                int quantityOwned = a.getQuantity();
+                box.display(stock, price, bal, quantityOwned, homeText, username, table, getIndex(), out, in);
+            });
+        }
+        
+        @Override
+        protected void updateItem(Asset a, boolean b) {
+            super.updateItem(a, b);
+            if (!b) setGraphic(btn); // only show sell button if row is not empty
+        }
+    }
 
-    public static void login() {
+    public void login() {
         if (username.equals("") || pw.equals("")) {
             loginText.setFill(Color.RED);
             loginText.setText("username and password cannot be empty");
@@ -372,6 +396,8 @@ public class Client extends Application {
         loginText.textProperty().bind(task.messageProperty());
         new Thread(task).start();
         task.setOnSucceeded(e -> {
+            loginText.textProperty().unbind();
+            loginText.fillProperty().unbind();
             int result = (int) task.getValue();
             if (result == 0) {
                 String text = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", bal.bd, ")");               
@@ -379,12 +405,15 @@ public class Client extends Application {
                 setupHome();
                 window.setScene(home);
             }
-            loginText.textProperty().unbind();
-            loginText.fillProperty().unbind();
+            else {
+                try {
+                    socket.close();
+                } catch (Exception ex) {} // no need to do anything
+            }
         });
     }
     
-    public static void register() {
+    public void register() {
         if (username.equals("") || pw.equals("")) {
             loginText.setFill(Color.RED);
             loginText.setText("username and password cannot be empty");
@@ -442,14 +471,11 @@ public class Client extends Application {
             loginText.fillProperty().unbind();
             try {
                 socket.close();
-            } catch (IOException i) {
-                System.out.println("IOException while closing socket and input stream");
-            }
+            } catch (Exception ex) {} // no need to do anything
         });
     } 
     
-    public static void searchStock() {
-        //price = 0;
+    public void searchStock() {
         BooleanProperty showBuyBtn = new SimpleBooleanProperty(false);
         buyBtn.visibleProperty().bind(showBuyBtn);
         ObjectProperty textColorProperty = new SimpleObjectProperty();
@@ -499,8 +525,7 @@ public class Client extends Application {
         });
     }
     
-    public static void searchCurrency() {
-        //price = 0;
+    public void searchCurrency() {
         BooleanProperty showBuyBtn = new SimpleBooleanProperty(false);
         buyBtn.visibleProperty().bind(showBuyBtn);
         ObjectProperty textColorProperty = new SimpleObjectProperty();
