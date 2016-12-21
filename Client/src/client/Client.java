@@ -131,7 +131,8 @@ public class Client extends Application {
         grid.setPadding(new Insets(25, 25, 25, 25)); //top, right, bottom, left
         grid.setHgap(15);
         grid.setVgap(15);
-        
+                     
+        homeText.setText(String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", bal.bd, ")"));
         homeText.setFont(Font.font("Calibri", 30));
         grid.add(homeText, 0, 0); 
         GridPane.setHalignment(homeText, HPos.CENTER);
@@ -172,15 +173,21 @@ public class Client extends Application {
         TextField currencyField = new TextField();
         currencyField.setFont(Font.font("Calibri", 20));
         currencyField.setOnAction(e -> {
-            currency = currencyField.getText();
-            searchCurrency();
+            /*currency = currencyField.getText();
+            searchCurrency();*/
+            homeText2.setFill(Color.RED);
+            homeText2.setText("I told you this doesn't work yet");
+            buyBtn.setVisible(false);
         });
         
         Button currencyBtn = new Button("search");
         currencyBtn.setFont(Font.font("Calibri", 20));
         currencyBtn.setOnAction(e -> {
-            currency = currencyField.getText();
-            searchCurrency();
+            /*currency = currencyField.getText();
+            searchCurrency();*/
+            homeText2.setFill(Color.RED);
+            homeText2.setText("I told you this doesn't work yet");
+            buyBtn.setVisible(false);
         });
         
         HBox hbox2 = new HBox(15);
@@ -195,11 +202,32 @@ public class Client extends Application {
             box.display(stock, price, bal, homeText, username, out, in);
         });
         HBox hbox4 = new HBox(15);
+        homeText2.setText("");
         homeText2.setFont(Font.font("Calibri", 20));
         hbox4.getChildren().addAll(homeText2, buyBtn);   
-        grid.add(hbox4, 0, 8);
+        grid.add(hbox4, 0, 7);
         GridPane.setHalignment(hbox4, HPos.CENTER);
         GridPane.setFillWidth(hbox4, false); //otherwise hbox2 would be too wide
+        
+        Button btcBtn = new Button("Buy bitcoin");
+        btcBtn.setFont(Font.font("Calibri", 20));
+        currencyBtn.setOnAction(e -> {
+            homeText2.setFill(Color.RED);
+            homeText2.setText("I told you this doesn't work yet");
+            buyBtn.setVisible(false);
+        });
+        Button ethBtn = new Button("Buy ether");
+        ethBtn.setFont(Font.font("Calibri", 20));
+        ethBtn.setOnAction(e -> {
+            homeText2.setFill(Color.RED);
+            homeText2.setText("I told you this doesn't work yet");
+            buyBtn.setVisible(false);
+        });
+        HBox hbox5 = new HBox(15);
+        hbox5.getChildren().addAll(btcBtn, ethBtn);
+        grid.add(hbox5, 0, 9);
+        GridPane.setHalignment(hbox5, HPos.CENTER);
+        GridPane.setFillWidth(hbox5, false);
         
         Button logoutBtn = new Button("Logout");
         logoutBtn.setFont(Font.font("Calibri", 20));
@@ -211,7 +239,7 @@ public class Client extends Application {
                 socket.close();
             } catch (Exception ex) {} // no need to do anything
         });
-        grid.add(logoutBtn, 0, 9);
+        grid.add(logoutBtn, 0, 10);
         GridPane.setHalignment(logoutBtn, HPos.RIGHT);
       
         home = new Scene(grid, 700, 500);
@@ -400,8 +428,6 @@ public class Client extends Application {
             loginText.fillProperty().unbind();
             int result = (int) task.getValue();
             if (result == 0) {
-                String text = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", bal.bd, ")");               
-                homeText.setText(text);
                 setupHome();
                 window.setScene(home);
             }
@@ -426,7 +452,7 @@ public class Client extends Application {
                 textColorProperty.setValue(Color.GREEN);
                 updateMessage("connecting...");
                 try {
-                    hostIP = InetAddress.getLocalHost();
+                    hostIP = InetAddress.getByName("162.156.144.68");
                     socket = new Socket(hostIP, portNumber);
                     out = new PrintWriter(socket.getOutputStream(), true);
                     in = new BufferedReader(new InputStreamReader(socket.getInputStream()));

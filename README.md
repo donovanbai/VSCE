@@ -13,13 +13,13 @@ Bitcoin data is retrieved using QuadrigaCX's API
 All user data is stored on Amazon DynamoDB  
 
 ## Completed features:
-- search for stocks by symbol and purchase
+- buy/sell stocks
 - view account balance and inventory
 
 ## Future features:
-- sell stocks
 - buy/sell currencies
 - buy/sell bitcoin/ether
 - view gains/losses
-- view price history (graphs)
-- search suggestions
+- view price history (graphs?)
+- search suggestions (?)
+- stop-loss order (?)
