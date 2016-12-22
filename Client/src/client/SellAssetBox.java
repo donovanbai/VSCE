@@ -32,11 +32,12 @@ public class SellAssetBox {
     TextField qField = new TextField();
     Text msg = new Text();
     Text balText, homeText, qText;
-    int quantityOwned, row;
+    int row;
+    BigDecimal quantityOwned;
     BigDecimalWrapper bal;
     TableView<Asset> table;
     
-    public void display(String stock, BigDecimal price, BigDecimalWrapper bal, int quantityOwned, Text homeText, String username, TableView<Asset> table, int row, PrintWriter out, BufferedReader in) {
+    public void display(String stock, BigDecimal price, BigDecimalWrapper bal, BigDecimal quantityOwned, Text homeText, String username, TableView<Asset> table, int row, PrintWriter out, BufferedReader in) {
         this.stock = stock;
         this.homeText = homeText;
         this.username = username;
@@ -124,7 +125,7 @@ public class SellAssetBox {
             msg.setText("quantity has to be > 0");
             return;
         }
-        if (Integer.parseInt(qField.getText()) > quantityOwned) {
+        if (Integer.parseInt(qField.getText()) > quantityOwned.intValue()) {
             msg.setFill(Color.RED);
             msg.setText("you do not own that many shares");
             return;
@@ -159,14 +160,14 @@ public class SellAssetBox {
                 String s3 = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", newBal, ")");
                 homeText.setText(s3);
                 bal.bd = newBal;
-                quantityOwned = newQuantity;
+                quantityOwned = new BigDecimal(newQuantity);
                 qText.setText("shares owned: " + newQuantity + "\n");
                 // update table with new quantity
                 if (newQuantity == 0) table.getItems().remove(row);
                 else {
                     String type = table.getItems().get(row).getType();
                     BigDecimal price = table.getItems().get(row).getPrice();
-                    table.getItems().set(row, new Asset(stock, type, price, newQuantity));
+                    table.getItems().set(row, new Asset(stock, type, price, new BigDecimal(newQuantity)));
                 }
             } catch (IOException i) {
                 System.out.println("IOException while getting server reply");

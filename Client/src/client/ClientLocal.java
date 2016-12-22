@@ -211,10 +211,11 @@ public class ClientLocal extends Application {
         
         Button btcBtn = new Button("Buy bitcoin");
         btcBtn.setFont(Font.font("Calibri", 20));
-        currencyBtn.setOnAction(e -> {
-            homeText2.setFill(Color.RED);
-            homeText2.setText("I told you this doesn't work yet");
+        btcBtn.setOnAction(e -> {
+            homeText2.setText("");
             buyBtn.setVisible(false);
+            BuyBtcBox box = new BuyBtcBox();
+            box.display(bal, homeText, username, out, in);
         });
         Button ethBtn = new Button("Buy ether");
         ethBtn.setFont(Font.font("Calibri", 20));
@@ -302,8 +303,10 @@ public class ClientLocal extends Application {
                     while (!serverReply.equals("end")) {
                         String[] arr = serverReply.split("_"); //eg. parse "aapl_stock" into "appl" and "stock"
                         String name = arr[0];
-                        String type = arr[1];
-                        int quantity = Integer.parseInt(in.readLine());
+                        String type = null;
+                        if (arr.length == 2) type = arr[1];
+                        else if (name.equals("btc")) type = "bitcoin";
+                        BigDecimal quantity = new BigDecimal(in.readLine());
                         BigDecimal price = new BigDecimal(in.readLine());      
                         assets.add(new Asset(name, type, price, quantity));
                         serverReply = in.readLine();
@@ -318,6 +321,7 @@ public class ClientLocal extends Application {
         new Thread(task).start();
         task.setOnSucceeded(e -> {
             table = new TableView();
+            table.setStyle(style);
             table.setMinWidth(700);
             table.setItems(assets);
             table.getColumns().addAll(nameCol, typeCol, priceCol, quantityCol, totalValCol, sellCol);
@@ -347,7 +351,7 @@ public class ClientLocal extends Application {
                 Asset a = getTableView().getItems().get(getIndex());
                 stock = a.getName();
                 price = a.getPrice();
-                int quantityOwned = a.getQuantity();
+                BigDecimal quantityOwned = a.getQuantity();
                 box.display(stock, price, bal, quantityOwned, homeText, username, table, getIndex(), out, in);
             });
         }
@@ -526,17 +530,17 @@ public class ClientLocal extends Application {
                 if (serverReply.equals("fail")) {
                     textColorProperty.setValue(Color.RED);
                     updateMessage("failed to retrive price");
+                    return null;
                 }
-                else if (serverReply.equals("N/A")) {
+                if (serverReply.equals("N/A")) {
                     textColorProperty.setValue(Color.RED);
                     updateMessage("unknown stock symbol");
+                    return null;
                 }
-                else {
-                    price = new BigDecimal(serverReply);
-                    textColorProperty.setValue(Color.GREEN);
-                    updateMessage("last trade: $" + serverReply);
-                    showBuyBtn.setValue(true);
-                }
+                price = new BigDecimal(serverReply);
+                textColorProperty.setValue(Color.GREEN);
+                updateMessage("last trade: $" + serverReply);
+                showBuyBtn.setValue(true);
                 return null;
             }
         };

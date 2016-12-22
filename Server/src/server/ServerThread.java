@@ -17,6 +17,7 @@ import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.document.UpdateItemOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.UpdateItemSpec;
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
+import com.google.gson.Gson;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
@@ -124,8 +125,7 @@ public class ServerThread extends Thread {
                                 continue;
                             }
                             int prevQuantity;
-                            boolean b = user.isPresent(stock + "_stock"); //check if user already owns this stock
-                            if (b == false) {
+                            if (!user.isPresent(stock + "_stock")) { //check if user already owns this stock
                                 prevQuantity = 0;                               
                             }
                             else {
@@ -209,19 +209,80 @@ public class ServerThread extends Thread {
                                     out.println(e.getValue());
                                     String[] arr = e.getKey().toString().split("_");
                                     String name = arr[0];
-                                    String type = arr[1];
-                                    if (type.equals("stock")) {
-                                        String stockPrice = null;
+                                    if (arr.length == 2) {
+                                        String type = arr[1];
+                                        if (type.equals("stock")) {
+                                            String stockPrice = null;
+                                            try {
+                                                stockPrice = getStockPrice(name);
+                                            } catch (Exception e2) {
+                                                System.out.print(e2.getMessage());
+                                            }
+                                            out.println(stockPrice);
+                                        }
+                                    }
+                                    else if (name == "btc") {
+                                        String price = null;
                                         try {
-                                            stockPrice = getStockPrice(name);
+                                            price = getBtcPrice();
                                         } catch (Exception e2) {
                                             System.out.print(e2.getMessage());
                                         }
-                                        out.println(stockPrice);
+                                        out.println(price);
                                     }
                                 }
                             }
                             out.println("end");
+                        }
+                        else if (inputLine.equals("get btc price")) {
+                            System.out.println(username + " is getting bitcoin price");
+                            String price = null;
+                            try {
+                                price = getBtcPrice();
+                            } catch (Exception e) {
+                                System.out.println(e.getMessage());
+                                out.println("fail");
+                                continue;
+                            }
+                            out.println(price);
+                        }
+                        else if (inputLine.equals("buy btc")) {
+                            BigDecimal amount = new BigDecimal(in.readLine());
+                            String strBal = user.getString("balance");
+                            BigDecimal userBal = new BigDecimal(strBal);
+                            if (amount.compareTo(userBal) == 1) {
+                                System.out.println(username + " tried to buy too much bitcoin");
+                                out.println(1);
+                                continue;
+                            }
+                            String strPrice = null;
+                            try {
+                                strPrice = getBtcPrice();
+                            } catch (Exception e) {
+                                System.out.println(e.getMessage());
+                                out.println("fail");
+                                continue;
+                            }
+                            BigDecimal price = new BigDecimal(strPrice);
+                            BigDecimal btcQuantity = amount.divide(price, 8, RoundingMode.DOWN);
+                            BigDecimal prevQuantity;
+                            if (!user.isPresent("btc")) {
+                                prevQuantity = new BigDecimal("0");                               
+                            }
+                            else {
+                                prevQuantity = new BigDecimal(user.getString("btc"));
+                            }
+                            UpdateItemSpec update = new UpdateItemSpec()
+                                .withPrimaryKey("username", username)
+                                .withUpdateExpression("set btc = :v1, balance = :v2")
+                                .withValueMap(new ValueMap()
+                                    .withNumber(":v1", btcQuantity.add(prevQuantity))
+                                    .withNumber(":v2", userBal.subtract(amount)));
+                            UpdateItemOutcome outcome = table.updateItem(update);
+                            user = table.getItem("username", username); // fetch updated user
+                            out.println(0);
+                            out.println(btcQuantity.add(prevQuantity));
+                            out.println(userBal.subtract(amount));
                         }
                         else if (inputLine.equals("logout")) {
                             System.out.println(username + " logged out");
@@ -266,5 +327,20 @@ public class ServerThread extends Thread {
             stockPrice = in.readLine(); //yahoo returns "N/A" if stock doesn't exist
         }
         return stockPrice;
+    }
+    
+    private String getBtcPrice() throws Exception {
+        String strURL = "https://api.quadrigacx.com/v2/ticker?book=btc_usd";
+        URL btcURL = new URL(strURL);
+        URLConnection btcURLConnection = btcURL.openConnection();
+        //server returns 403 if user agent is not set
+        btcURLConnection.setRequestProperty("User-Agent", "Mozilla/5.0");
+        String price;
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(btcURLConnection.getInputStream()))) {
+            Gson gson = new Gson(); // parse JSON reply
+            BtcPrice btcPrice = gson.fromJson(in.readLine(), BtcPrice.class);
+            price = btcPrice.last.toString();
+        }
+        return price;
     }
 }

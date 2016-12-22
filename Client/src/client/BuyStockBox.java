@@ -7,7 +7,10 @@ import java.math.BigDecimal;
 import java.util.Locale;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleObjectProperty;
+import javafx.concurrent.Task;
 import javafx.geometry.HPos;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -111,38 +114,58 @@ public class BuyStockBox {
             msg.setText("quantity has to be > 0");
             return;
         }
-        msg.setFill(Color.GREEN);
-        msg.setText("loading...");
-        out.println("buy stock");
-        out.println(stock);
-        out.println(qField.getText());
-        String serverReply = null;
-        try {
-            serverReply = in.readLine();
-        } catch (IOException i) {
-            System.out.println("IOException while getting server reply");
-        }
-        if (serverReply.equals("fail")) {
-            msg.setFill(Color.RED);
-            msg.setText("stock price could not be retrieved");
-        }
-        else if (serverReply.equals("1")) {
-            msg.setFill(Color.RED);
-            msg.setText("insufficient balance!");
-        }
-        else if (serverReply.equals("0")) {
-            msg.setFill(Color.GREEN);
-            msg.setText("purchase complete!"); 
-            try {
-                BigDecimal newBal = new BigDecimal(in.readLine());
-                String s2 = String.format("%s $%,.2f", "your balance:", newBal);
-                balText.setText(s2);
-                String s3 = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", newBal, ")");
-                homeText.setText(s3);
-                bal.bd = newBal;
-            } catch (IOException i) {
-                System.out.println("IOException while getting server reply");
+        
+        ObjectProperty textColorProperty = new SimpleObjectProperty();
+        Task task = new Task<String>() {
+            @Override
+            protected String call() {
+                textColorProperty.setValue(Color.GREEN);
+                updateMessage("loading...");
+                out.println("buy stock");
+                out.println(stock);
+                out.println(qField.getText());
+                String serverReply = null;
+                try {
+                    serverReply = in.readLine();
+                } catch (IOException i) {
+                    System.out.println("IOException while getting server reply");
+                }
+                return serverReply;
             }
-        }
+        };
+        msg.fillProperty().bind(textColorProperty);
+        msg.textProperty().bind(task.messageProperty());
+        new Thread(task).start();
+        task.setOnSucceeded(e->{
+            msg.fillProperty().unbind();
+            msg.textProperty().unbind();
+            String serverReply = (String)task.getValue();
+            if (serverReply == null) {
+                msg.setFill(Color.RED);
+                msg.setText("IOException while getting server reply");
+            }
+            else if (serverReply.equals("fail")) {
+                msg.setFill(Color.RED);
+                msg.setText("stock price could not be retrieved");
+            }
+            else if (serverReply.equals("1")) {
+                msg.setFill(Color.RED);
+                msg.setText("insufficient balance!");
+            }
+            else if (serverReply.equals("0")) {
+                msg.setFill(Color.GREEN);
+                msg.setText("purchase complete!"); 
+                try {
+                    BigDecimal newBal = new BigDecimal(in.readLine());
+                    String s2 = String.format("%s $%,.2f", "your balance:", newBal);
+                    balText.setText(s2);
+                    String s3 = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", newBal, ")");
+                    homeText.setText(s3);
+                    bal.bd = newBal;
+                } catch (IOException i) {
+                    System.out.println("IOException while getting server reply");
+                }
+            }
+        });   
     }
 }

@@ -27,6 +27,7 @@ public class QcxTest {
                     BufferedReader in = new BufferedReader(new InputStreamReader(myURLConnection.getInputStream()));
 					String inputLine;
 					while ((inputLine = in.readLine()) != null) {
+						
 						System.out.println(inputLine); //data is returned in JSON format
 					}
                     System.out.println();

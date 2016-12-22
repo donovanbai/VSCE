@@ -7,22 +7,22 @@ public class Asset {
     private String name;
     private String type;
     private BigDecimal price;
-    private int quantity;
+    private BigDecimal quantity;
     private BigDecimal totalVal;
     
     public Asset() {
         name = "";
         type = "";
         price = new BigDecimal("0");
-        quantity = 0;
+        quantity = new BigDecimal("0");
         totalVal = new BigDecimal("0");
     }
-    public Asset(String name, String type, BigDecimal price, int quantity) {
+    public Asset(String name, String type, BigDecimal price, BigDecimal quantity) {
         this.name = name;
         this.type = type;
         this.price = price;
         this.quantity = quantity;
-        this.totalVal = price.multiply(new BigDecimal(quantity));
+        this.totalVal = price.multiply((quantity));
         this.totalVal = this.totalVal.setScale(2, RoundingMode.UP); // round totalVal to 2 decimal places
     }
 
@@ -48,17 +48,17 @@ public class Asset {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
-        totalVal = price.multiply(new BigDecimal(quantity));
+        totalVal = price.multiply(quantity);
         totalVal = totalVal.setScale(2, RoundingMode.UP);
     }
 
-    public int getQuantity() {
+    public BigDecimal getQuantity() {
         return quantity;
     }
 
-    public void setQuantity(int quantity) {
+    public void setQuantity(BigDecimal quantity) {
         this.quantity = quantity;
-        totalVal = price.multiply(new BigDecimal(quantity));
+        totalVal = price.multiply(quantity);
         totalVal = totalVal.setScale(2, RoundingMode.UP);
     }
 
