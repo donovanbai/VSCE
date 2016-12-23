@@ -6,8 +6,13 @@ import java.io.PrintWriter;
 import java.math.BigDecimal;
 import java.util.Locale;
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleObjectProperty;
+import javafx.concurrent.Task;
 import javafx.geometry.HPos;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -28,7 +33,7 @@ import javafx.util.converter.NumberStringConverter;
 public class SellAssetBox {
     PrintWriter out;
     BufferedReader in;
-    String stock, username;
+    String name, username;
     TextField qField = new TextField();
     Text msg = new Text();
     Text balText, homeText, qText;
@@ -37,8 +42,8 @@ public class SellAssetBox {
     BigDecimalWrapper bal;
     TableView<Asset> table;
     
-    public void display(String stock, BigDecimal price, BigDecimalWrapper bal, BigDecimal quantityOwned, Text homeText, String username, TableView<Asset> table, int row, PrintWriter out, BufferedReader in) {
-        this.stock = stock;
+    public void display(String type, String name, BigDecimal price, BigDecimalWrapper bal, BigDecimal quantityOwned, Text homeText, String username, TableView<Asset> table, int row, PrintWriter out, BufferedReader in) {
+        this.name = name;
         this.homeText = homeText;
         this.username = username;
         this.table = table;
@@ -50,7 +55,7 @@ public class SellAssetBox {
         
         Stage window = new Stage();
         window.initModality(Modality.APPLICATION_MODAL);
-        window.setTitle("Sell " + stock);
+        window.setTitle("Sell " + name);
         
         GridPane grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
@@ -63,7 +68,9 @@ public class SellAssetBox {
         grid.add(balText, 0, 0);
         GridPane.setHalignment(balText, HPos.CENTER);
         
-        String s2 = "shares owned: " + quantityOwned + "\n";
+        String s2 = null;
+        if (type.equals("stock")) s2 = "shares owned: " + quantityOwned + "\n";
+        else if (type.equals("bitcoin")) s2 = "amount owned: " + quantityOwned + " XBT\n";
         qText = new Text(s2);
         qText.setFont(Font.font("Calibri", 20));
         grid.add(qText, 0, 1);
@@ -74,7 +81,8 @@ public class SellAssetBox {
         
         qField.setFont(Font.font("Calibri", 20));
         qField.setOnAction(e -> {
-            sellStock();
+            if (type.equals("stock")) sellStock();
+            else if (type.equals("bitcoin")) sellBtc();
         });
         
         HBox hbox = new HBox(15);
@@ -84,12 +92,18 @@ public class SellAssetBox {
 
         Text totalText = new Text();
         
-        IntegerProperty ip = new SimpleIntegerProperty();
         StringConverter<Number> converter = new NumberStringConverter();
-        Bindings.bindBidirectional(qField.textProperty(), ip, converter);    
         Locale locale = Locale.CANADA;
-        totalText.textProperty().bind(Bindings.format(locale, "estimated total: $%,.2f", ip.multiply(price.doubleValue())));
-        
+        if (type == "stock") {
+            IntegerProperty ip = new SimpleIntegerProperty();
+            Bindings.bindBidirectional(qField.textProperty(), ip, converter);         
+            totalText.textProperty().bind(Bindings.format(locale, "estimated total: $%,.2f", ip.multiply(price.doubleValue())));
+        }
+        else if (type == "bitcoin") {
+            DoubleProperty dp = new SimpleDoubleProperty();
+            Bindings.bindBidirectional(qField.textProperty(), dp, converter);         
+            totalText.textProperty().bind(Bindings.format(locale, "estimated total: $%,.2f", dp.multiply(price.doubleValue())));
+        }
         totalText.setFont(Font.font("Calibri", 20));
         totalText.setFill(Color.GREEN);
         grid.add(totalText, 0, 3);
@@ -98,7 +112,8 @@ public class SellAssetBox {
         Button sellBtn = new Button("Sell now");
         sellBtn.setFont(Font.font("Calibri", 20));
         sellBtn.setOnAction(e -> {
-            sellStock();
+            if (type.equals("stock")) sellStock();
+            else if (type.equals("bitcoin")) sellBtc();
         });
         grid.add(sellBtn, 0, 4);
         GridPane.setHalignment(sellBtn, HPos.CENTER);
@@ -130,48 +145,156 @@ public class SellAssetBox {
             msg.setText("you do not own that many shares");
             return;
         }
-        msg.setFill(Color.GREEN);
-        msg.setText("loading...");
-        out.println("sell stock");
-        out.println(stock);
-        out.println(qField.getText());
-        String serverReply = null;
-        try {
-            serverReply = in.readLine();
-        } catch (IOException i) {
-            System.out.println("IOException while getting server reply");
-        }
-        if (serverReply.equals("fail") || serverReply.equals("N/A")) {
-            msg.setFill(Color.RED);
-            msg.setText("stock price could not be retrieved");
-        }
-        else if (serverReply.equals("1")) {
-            msg.setFill(Color.RED);
-            msg.setText("you do not own that many shares. re-login.");
-        }
-        else if (serverReply.equals("0")) {
-            msg.setFill(Color.GREEN);
-            msg.setText("sale complete!"); 
-            try {
-                BigDecimal newBal = new BigDecimal(in.readLine());
-                int newQuantity = Integer.parseInt(in.readLine());
-                String s2 = String.format("%s $%,.2f", "your balance:", newBal);
-                balText.setText(s2);
-                String s3 = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", newBal, ")");
-                homeText.setText(s3);
-                bal.bd = newBal;
-                quantityOwned = new BigDecimal(newQuantity);
-                qText.setText("shares owned: " + newQuantity + "\n");
-                // update table with new quantity
-                if (newQuantity == 0) table.getItems().remove(row);
-                else {
-                    String type = table.getItems().get(row).getType();
-                    BigDecimal price = table.getItems().get(row).getPrice();
-                    table.getItems().set(row, new Asset(stock, type, price, new BigDecimal(newQuantity)));
+        
+        ObjectProperty textColorProperty = new SimpleObjectProperty();
+        Task task = new Task<String>() {
+            @Override
+            protected String call() {
+                textColorProperty.setValue(Color.GREEN);
+                updateMessage("loading...");
+                out.println("sell stock");
+                out.println(name);
+                out.println(qField.getText());
+                String serverReply = null;
+                try {
+                    serverReply = in.readLine();
+                } catch (IOException i) {
+                    System.out.println("IOException while getting server reply");
                 }
-            } catch (IOException i) {
-                System.out.println("IOException while getting server reply");
+                return serverReply;    
             }
+        };
+        msg.fillProperty().bind(textColorProperty);
+        msg.textProperty().bind(task.messageProperty());
+        new Thread(task).start();
+        task.setOnSucceeded(e->{
+            msg.fillProperty().unbind();
+            msg.textProperty().unbind();
+            String serverReply = (String)task.getValue();
+            if (serverReply == null) {
+                msg.setFill(Color.RED);
+                msg.setText("IOException while getting server reply");
+            }
+            else if (serverReply.equals("fail") || serverReply.equals("N/A")) {
+                msg.setFill(Color.RED);
+                msg.setText("stock price could not be retrieved");
+            }
+            else if (serverReply.equals("1")) {
+                msg.setFill(Color.RED);
+                msg.setText("you do not own that many shares. re-login.");
+            }
+            else if (serverReply.equals("0")) {
+                msg.setFill(Color.GREEN);
+                msg.setText("sale complete!"); 
+                try {
+                    BigDecimal newBal = new BigDecimal(in.readLine());
+                    int newQuantity = Integer.parseInt(in.readLine());
+                    String s = String.format("%s $%,.2f", "your balance:", newBal);
+                    balText.setText(s);
+                    String s2 = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", newBal, ")");
+                    homeText.setText(s2);
+                    bal.bd = newBal;
+                    quantityOwned = new BigDecimal(newQuantity);
+                    qText.setText("shares owned: " + newQuantity + "\n");
+                    // update table with new quantity
+                    if (newQuantity == 0) table.getItems().remove(row);
+                    else {
+                        String type = table.getItems().get(row).getType();
+                        BigDecimal price = table.getItems().get(row).getPrice();
+                        table.getItems().set(row, new Asset(name, type, price, new BigDecimal(newQuantity)));
+                    }
+                } catch (IOException i) {
+                    System.out.println("IOException while getting server reply");
+                }
+            }
+        });
+    }
+    
+    private void sellBtc() {
+        try {
+            Double.parseDouble(qField.getText());
+        } catch (NumberFormatException e) {
+            msg.setFill(Color.RED);
+            msg.setText("invalid input");
+            return;
         }
+        BigDecimal quantity = new BigDecimal(qField.getText());
+        if (quantity.compareTo(new BigDecimal("0")) != 1) {
+            msg.setFill(Color.RED);
+            msg.setText("quantity has to be > 0");
+            return;
+        }
+        if (quantity.compareTo(quantityOwned) == 1) {
+            msg.setFill(Color.RED);
+            msg.setText("you do not own that much bitcoin");
+            return;
+        }
+        // check that number of decimal places is at most 8
+        int decimalPos = qField.getText().indexOf(".");
+        if (decimalPos != -1 && qField.getText().length() - 1 - decimalPos > 8) {
+            msg.setFill(Color.RED);
+            msg.setText("too many decimal places");
+            return;
+        }
+        
+        ObjectProperty textColorProperty = new SimpleObjectProperty();
+        Task task = new Task<String>() {
+            @Override
+            protected String call() {
+                textColorProperty.setValue(Color.GREEN);
+                updateMessage("loading...");
+                out.println("sell btc");
+                out.println(qField.getText());
+                String serverReply = null;
+                try {
+                    serverReply = in.readLine();
+                } catch (IOException i) {
+                    System.out.println("IOException while getting server reply");
+                }
+                return serverReply;    
+            }
+        };
+        msg.fillProperty().bind(textColorProperty);
+        msg.textProperty().bind(task.messageProperty());
+        new Thread(task).start();
+        task.setOnSucceeded(e->{
+            msg.fillProperty().unbind();
+            msg.textProperty().unbind();
+            String serverReply = (String)task.getValue();
+            if (serverReply == null) {
+                msg.setFill(Color.RED);
+                msg.setText("IOException while getting server reply");
+            }
+            else if (serverReply.equals("1")) {
+                msg.setFill(Color.RED);
+                msg.setText("you do not own that much bitcoin. re-login.");
+            }
+            else if (serverReply.equals("fail")) {
+                msg.setFill(Color.RED);
+                msg.setText("failed to retrieve bitcoin price");
+            }
+            else if (serverReply.equals("0")) {
+                msg.setFill(Color.GREEN);
+                msg.setText("sale complete!"); 
+                try {
+                    quantityOwned = new BigDecimal(in.readLine());
+                    bal.bd = new BigDecimal(in.readLine());
+                    String s = String.format("%s $%,.2f", "your balance:", bal.bd);
+                    balText.setText(s);
+                    String s2 = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", bal.bd, ")");
+                    homeText.setText(s2);
+                    qText.setText("amount owned: " + quantityOwned + " XBT\n");
+                    // update table with new quantity
+                    if (quantityOwned.compareTo(new BigDecimal("0")) == 0) table.getItems().remove(row);
+                    else {
+                        String type = table.getItems().get(row).getType();
+                        BigDecimal price = table.getItems().get(row).getPrice();
+                        table.getItems().set(row, new Asset(name, type, price, quantityOwned));
+                    }
+                } catch (IOException i) {
+                    System.out.println("IOException while getting server reply");
+                }
+            }
+        });
     }
 }

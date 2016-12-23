@@ -284,6 +284,36 @@ public class ServerThread extends Thread {
                             out.println(btcQuantity.add(prevQuantity));
                             out.println(userBal.subtract(amount));
                         }
+                        else if (inputLine.equals("sell btc")) {
+                            BigDecimal quantity = new BigDecimal(in.readLine());
+                            BigDecimal quantityOwned = new BigDecimal(user.getString("btc"));
+                            if (quantity.compareTo(quantityOwned) == 1) {
+                                System.out.println(username + " tried to sell too much bitcoin");
+                                out.println(1);
+                                continue;
+                            }   
+                            BigDecimal price;
+                            try {
+                                price = new BigDecimal(getBtcPrice());
+                            } catch (Exception e) {
+                                System.out.println("failed to retrieve bitcoin price");
+                                out.println("fail");
+                                continue;
+                            }
+                            BigDecimal bal = new BigDecimal(user.getString("balance"));
+                            BigDecimal newBal = bal.add(quantity.multiply(price));
+                            UpdateItemSpec update = new UpdateItemSpec()
+                                .withPrimaryKey("username", username)
+                                .withUpdateExpression("set btc = :v1, balance = :v2")
+                                .withValueMap(new ValueMap()
+                                    .withNumber(":v1", quantityOwned.subtract(quantity))
+                                    .withNumber(":v2", newBal));
+                            UpdateItemOutcome outcome = table.updateItem(update);
+                            user = table.getItem("username", username); // fetch updated user
+                            out.println(0);
+                            out.println(quantityOwned.subtract(quantity));
+                            out.println(newBal);
+                        }
                         else if (inputLine.equals("logout")) {
                             System.out.println(username + " logged out");
                             socket.close();

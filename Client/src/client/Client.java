@@ -349,10 +349,11 @@ public class Client extends Application {
             btn.setOnAction(e->{
                 SellAssetBox box = new SellAssetBox();
                 Asset a = getTableView().getItems().get(getIndex());
-                stock = a.getName();
+                String type = a.getType();
+                String name = a.getName();
                 price = a.getPrice();
                 BigDecimal quantityOwned = a.getQuantity();
-                box.display(stock, price, bal, quantityOwned, homeText, username, table, getIndex(), out, in);
+                box.display(type, name, price, bal, quantityOwned, homeText, username, table, getIndex(), out, in);
             });
         }
         
