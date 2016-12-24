@@ -27,7 +27,7 @@ import javafx.stage.Stage;
 import javafx.util.StringConverter;
 import javafx.util.converter.NumberStringConverter;
 
-public class BuyBtcBox {
+public class BuyCryptoBox {
     PrintWriter out;
     BufferedReader in;
     String username;
@@ -36,8 +36,10 @@ public class BuyBtcBox {
     Text balText, homeText, costText, amtText;
     BigDecimalWrapper bal;
     BigDecimal price;
+    String name;
 
-    public void display(BigDecimalWrapper bal, Text homeText, String username, PrintWriter out, BufferedReader in) {
+    public void display(String name, BigDecimalWrapper bal, Text homeText, String username, PrintWriter out, BufferedReader in) {
+        this.name = name;
         this.out = out;
         this.in = in;
         this.homeText = homeText;
@@ -46,7 +48,8 @@ public class BuyBtcBox {
 
         Stage window = new Stage();
         window.initModality(Modality.APPLICATION_MODAL);
-        window.setTitle("Buy bitcoin");
+        if (name.equals("btc")) window.setTitle("Buy bitcoin");
+        else if (name.equals("eth")) window.setTitle("Buy ether");
         
         GridPane grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
@@ -70,7 +73,7 @@ public class BuyBtcBox {
         
         amtField.setFont(Font.font("Calibri", 20));
         amtField.setOnAction(e -> {
-            buyBtc();
+            buy();
         });
         
         HBox hbox = new HBox(15);
@@ -86,8 +89,8 @@ public class BuyBtcBox {
         
         Button buyBtn = new Button("Buy now");
         buyBtn.setFont(Font.font("Calibri", 20));
-        buyBtn.setOnAction(e -> {
-            buyBtc();
+        buyBtn.setOnAction(e-> {
+            buy();
         });
         grid.add(buyBtn, 0, 4);
         GridPane.setHalignment(buyBtn, HPos.CENTER);
@@ -101,14 +104,15 @@ public class BuyBtcBox {
         window.showAndWait();
     }
     
-    private void fetchPrice() { // fetch bitcoin price to display on UI
+    private void fetchPrice() { // fetch bitcoin price to display on UIz
         ObjectProperty textColorProperty = new SimpleObjectProperty();
         Task task = new Task<Integer>() {
             @Override
             protected Integer call() {
                 textColorProperty.setValue(Color.GREEN);
                 updateMessage("loading...\n");
-                out.println("get btc price");
+                if (name.equals("btc")) out.println("get btc price");
+                else if (name.equals("eth")) out.println("get eth price");
                 String serverReply;
                 try {
                     serverReply = in.readLine();
@@ -134,32 +138,39 @@ public class BuyBtcBox {
             costText.textProperty().unbind();
             int result = (int)task.getValue();
             if (result == 0) {
-                costText.setText("price of 1 bitcoin: $" + price + "\n");
+                if (name.equals("btc")) costText.setText("price of 1 bitcoin: $" + price + "\n");
+                else if (name.equals("eth")) costText.setText("price of 1 ether: $" + price + "\n");
                 DoubleProperty dp = new SimpleDoubleProperty();
                 StringConverter<Number> converter = new NumberStringConverter();
                 Bindings.bindBidirectional(amtField.textProperty(), dp, converter);    
                 Locale locale = Locale.CANADA;
-                amtText.textProperty().bind(Bindings.format(locale, "estimated amount: %,.8f XBT", dp.divide(price.doubleValue()))); 
+                if (name.equals("btc")) amtText.textProperty().bind(Bindings.format(locale, "estimated amount: %,.8f XBT", dp.divide(price.doubleValue())));
+                else if (name.equals("eth")) amtText.textProperty().bind(Bindings.format(locale, "estimated amount: %,.8f ETH", dp.divide(price.doubleValue())));
             }
         });
     }
     
-    private void buyBtc() {
+    private void buy() {
+        BigDecimal amt;
         try {
-            Double.parseDouble(amtField.getText());
+            amt = new BigDecimal(amtField.getText());
         } catch (NumberFormatException e) {
             msg.setFill(Color.RED);
             msg.setText("invalid input");
             return;
         }
-        if (Double.parseDouble(amtField.getText()) <= 0) {
+        if (amt.compareTo(new BigDecimal("0")) != 1) {
             msg.setFill(Color.RED);
             msg.setText("quantity has to be > 0");
             return;
         }
+        if (amt.compareTo(bal.bd) == 1) {
+            msg.setFill(Color.RED);
+            msg.setText("insufficient balance!");
+            return;
+        }
         // check that number of decimal places is at most 2
-        int decimalPos = amtField.getText().indexOf(".");
-        if (decimalPos != -1 && amtField.getText().length() - 1 - decimalPos > 2) {
+        if (amt.scale() > 2) {
             msg.setFill(Color.RED);
             msg.setText("too many decimal places");
             return;
@@ -171,7 +182,8 @@ public class BuyBtcBox {
             protected String call() {
                 textColorProperty.setValue(Color.GREEN);
                 updateMessage("loading...");
-                out.println("buy btc");
+                if (name.equals("btc")) out.println("buy btc");
+                else if (name.equals("eth")) out.println("buy eth");
                 out.println(amtField.getText());
                 String serverReply = null;
                 try {
@@ -194,8 +206,9 @@ public class BuyBtcBox {
                 msg.setText("IOException while getting server reply");
             }
             else if (serverReply.equals("fail")) {
-            msg.setFill(Color.RED);
-            msg.setText("bitcoin price could not be retrieved");
+                msg.setFill(Color.RED);
+                if (name.equals("btc")) msg.setText("bitcoin price could not be retrieved");
+                else if (name.equals("eth")) msg.setText("ether price could not be retrieved");
             }
             else if (serverReply.equals("1")) {
                 msg.setFill(Color.RED);

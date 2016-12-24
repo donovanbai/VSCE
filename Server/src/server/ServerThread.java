@@ -221,10 +221,19 @@ public class ServerThread extends Thread {
                                             out.println(stockPrice);
                                         }
                                     }
-                                    else if (name == "btc") {
+                                    else if (name.equals("btc")) {
                                         String price = null;
                                         try {
                                             price = getBtcPrice();
+                                        } catch (Exception e2) {
+                                            System.out.print(e2.getMessage());
+                                        }
+                                        out.println(price);
+                                    }
+                                    else if (name.equals("eth")) {
+                                        String price = null;
+                                        try {
+                                            price = getEthPrice();
                                         } catch (Exception e2) {
                                             System.out.print(e2.getMessage());
                                         }
@@ -244,6 +253,19 @@ public class ServerThread extends Thread {
                                 out.println("fail");
                                 continue;
                             }
+                            out.println(price);
+                        }
+                        else if (inputLine.equals("get eth price")) {
+                            System.out.println(username + " is getting ether price");
+                            String price = null;
+                            try {
+                                price = getEthPrice();
+                            } catch (Exception e) {
+                                System.out.println(e.getMessage());
+                                out.println("fail");
+                                continue;
+                            }
+                            System.out.println(price);
                             out.println(price);
                         }
                         else if (inputLine.equals("buy btc")) {
@@ -284,6 +306,44 @@ public class ServerThread extends Thread {
                             out.println(btcQuantity.add(prevQuantity));
                             out.println(userBal.subtract(amount));
                         }
+                        else if (inputLine.equals("buy eth")) {
+                            BigDecimal amount = new BigDecimal(in.readLine());
+                            String strBal = user.getString("balance");
+                            BigDecimal userBal = new BigDecimal(strBal);
+                            if (amount.compareTo(userBal) == 1) {
+                                System.out.println(username + " tried to buy too much bitcoin");
+                                out.println(1);
+                                continue;
+                            }
+                            String strPrice = null;
+                            try {
+                                strPrice = getEthPrice();
+                            } catch (Exception e) {
+                                System.out.println(e.getMessage());
+                                out.println("fail");
+                                continue;
+                            }
+                            BigDecimal price = new BigDecimal(strPrice);
+                            BigDecimal ethQuantity = amount.divide(price, 8, RoundingMode.DOWN);
+                            BigDecimal prevQuantity;
+                            if (!user.isPresent("eth")) {
+                                prevQuantity = new BigDecimal("0");                               
+                            }
+                            else {
+                                prevQuantity = new BigDecimal(user.getString("eth"));
+                            }
+                            UpdateItemSpec update = new UpdateItemSpec()
+                                .withPrimaryKey("username", username)
+                                .withUpdateExpression("set eth = :v1, balance = :v2")
+                                .withValueMap(new ValueMap()
+                                    .withNumber(":v1", ethQuantity.add(prevQuantity))
+                                    .withNumber(":v2", userBal.subtract(amount)));
+                            UpdateItemOutcome outcome = table.updateItem(update);
+                            user = table.getItem("username", username); // fetch updated user
+                            out.println(0);
+                            out.println(ethQuantity.add(prevQuantity));
+                            out.println(userBal.subtract(amount));
+                        }
                         else if (inputLine.equals("sell btc")) {
                             BigDecimal quantity = new BigDecimal(in.readLine());
                             BigDecimal quantityOwned = new BigDecimal(user.getString("btc"));
@@ -305,6 +365,36 @@ public class ServerThread extends Thread {
                             UpdateItemSpec update = new UpdateItemSpec()
                                 .withPrimaryKey("username", username)
                                 .withUpdateExpression("set btc = :v1, balance = :v2")
+                                .withValueMap(new ValueMap()
+                                    .withNumber(":v1", quantityOwned.subtract(quantity))
+                                    .withNumber(":v2", newBal));
+                            UpdateItemOutcome outcome = table.updateItem(update);
+                            user = table.getItem("username", username); // fetch updated user
+                            out.println(0);
+                            out.println(quantityOwned.subtract(quantity));
+                            out.println(newBal);
+                        }
+                        else if (inputLine.equals("sell eth")) {
+                            BigDecimal quantity = new BigDecimal(in.readLine());
+                            BigDecimal quantityOwned = new BigDecimal(user.getString("eth"));
+                            if (quantity.compareTo(quantityOwned) == 1) {
+                                System.out.println(username + " tried to sell too much ether");
+                                out.println(1);
+                                continue;
+                            }   
+                            BigDecimal price;
+                            try {
+                                price = new BigDecimal(getEthPrice());
+                            } catch (Exception e) {
+                                System.out.println("failed to retrieve ether price");
+                                out.println("fail");
+                                continue;
+                            }
+                            BigDecimal bal = new BigDecimal(user.getString("balance"));
+                            BigDecimal newBal = bal.add(quantity.multiply(price));
+                            UpdateItemSpec update = new UpdateItemSpec()
+                                .withPrimaryKey("username", username)
+                                .withUpdateExpression("set eth = :v1, balance = :v2")
                                 .withValueMap(new ValueMap()
                                     .withNumber(":v1", quantityOwned.subtract(quantity))
                                     .withNumber(":v2", newBal));
@@ -368,9 +458,35 @@ public class ServerThread extends Thread {
         String price;
         try (BufferedReader in = new BufferedReader(new InputStreamReader(btcURLConnection.getInputStream()))) {
             Gson gson = new Gson(); // parse JSON reply
-            BtcPrice btcPrice = gson.fromJson(in.readLine(), BtcPrice.class);
+            Price btcPrice = gson.fromJson(in.readLine(), Price.class);
             price = btcPrice.last.toString();
         }
         return price;
+    }
+    private String getEthPrice() throws Exception {
+        // can't get usd price directly from quadrigacx.com so have to do a conversion
+        String strURL = "https://api.quadrigacx.com/v2/ticker?book=eth_btc";
+        URL ethURL = new URL(strURL);
+        URLConnection ethURLConnection = ethURL.openConnection();
+        //server returns 403 if user agent is not set
+        ethURLConnection.setRequestProperty("User-Agent", "Mozilla/5.0");
+        BigDecimal ethToBtc;
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(ethURLConnection.getInputStream()))) {
+            Gson gson = new Gson(); // parse JSON reply
+            Price price = gson.fromJson(in.readLine(), Price.class);
+            ethToBtc = price.last;
+        }
+        strURL = "https://api.quadrigacx.com/v2/ticker?book=btc_usd";
+        URL btcURL = new URL(strURL);
+        URLConnection btcURLConnection = btcURL.openConnection();
+        //server returns 403 if user agent is not set
+        btcURLConnection.setRequestProperty("User-Agent", "Mozilla/5.0");
+        BigDecimal btcToUsd;
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(btcURLConnection.getInputStream()))) {
+            Gson gson = new Gson(); // parse JSON reply
+            Price price = gson.fromJson(in.readLine(), Price.class);
+            btcToUsd = price.last;
+        }
+        return ethToBtc.multiply(btcToUsd).setScale(2, RoundingMode.UP).toString();
     }
 }

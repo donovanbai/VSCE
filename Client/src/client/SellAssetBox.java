@@ -71,6 +71,7 @@ public class SellAssetBox {
         String s2 = null;
         if (type.equals("stock")) s2 = "shares owned: " + quantityOwned + "\n";
         else if (type.equals("bitcoin")) s2 = "amount owned: " + quantityOwned + " XBT\n";
+        else if (type.equals("ether")) s2 = "amount owned: " + quantityOwned + " ETH\n";
         qText = new Text(s2);
         qText.setFont(Font.font("Calibri", 20));
         grid.add(qText, 0, 1);
@@ -82,7 +83,7 @@ public class SellAssetBox {
         qField.setFont(Font.font("Calibri", 20));
         qField.setOnAction(e -> {
             if (type.equals("stock")) sellStock();
-            else if (type.equals("bitcoin")) sellBtc();
+            else if (type.equals("bitcoin") || type.equals("ether")) sellCrypto();
         });
         
         HBox hbox = new HBox(15);
@@ -94,12 +95,12 @@ public class SellAssetBox {
         
         StringConverter<Number> converter = new NumberStringConverter();
         Locale locale = Locale.CANADA;
-        if (type == "stock") {
+        if (type.equals("stock")) {
             IntegerProperty ip = new SimpleIntegerProperty();
             Bindings.bindBidirectional(qField.textProperty(), ip, converter);         
             totalText.textProperty().bind(Bindings.format(locale, "estimated total: $%,.2f", ip.multiply(price.doubleValue())));
         }
-        else if (type == "bitcoin") {
+        else if (type.equals("bitcoin") || type.equals("ether")) {
             DoubleProperty dp = new SimpleDoubleProperty();
             Bindings.bindBidirectional(qField.textProperty(), dp, converter);         
             totalText.textProperty().bind(Bindings.format(locale, "estimated total: $%,.2f", dp.multiply(price.doubleValue())));
@@ -113,7 +114,7 @@ public class SellAssetBox {
         sellBtn.setFont(Font.font("Calibri", 20));
         sellBtn.setOnAction(e -> {
             if (type.equals("stock")) sellStock();
-            else if (type.equals("bitcoin")) sellBtc();
+            else if (type.equals("bitcoin") || type.equals("ether")) sellCrypto();
         });
         grid.add(sellBtn, 0, 4);
         GridPane.setHalignment(sellBtn, HPos.CENTER);
@@ -210,15 +211,15 @@ public class SellAssetBox {
         });
     }
     
-    private void sellBtc() {
+    private void sellCrypto() {
+        BigDecimal quantity;
         try {
-            Double.parseDouble(qField.getText());
+            quantity = new BigDecimal(qField.getText());
         } catch (NumberFormatException e) {
             msg.setFill(Color.RED);
             msg.setText("invalid input");
             return;
         }
-        BigDecimal quantity = new BigDecimal(qField.getText());
         if (quantity.compareTo(new BigDecimal("0")) != 1) {
             msg.setFill(Color.RED);
             msg.setText("quantity has to be > 0");
@@ -226,12 +227,12 @@ public class SellAssetBox {
         }
         if (quantity.compareTo(quantityOwned) == 1) {
             msg.setFill(Color.RED);
-            msg.setText("you do not own that much bitcoin");
+            if (name.equals("btc")) msg.setText("you do not own that much bitcoin");
+            else if (name.equals("eth")) msg.setText("you do not own that much ether");
             return;
         }
         // check that number of decimal places is at most 8
-        int decimalPos = qField.getText().indexOf(".");
-        if (decimalPos != -1 && qField.getText().length() - 1 - decimalPos > 8) {
+        if (quantity.scale() > 8) {
             msg.setFill(Color.RED);
             msg.setText("too many decimal places");
             return;
@@ -243,7 +244,8 @@ public class SellAssetBox {
             protected String call() {
                 textColorProperty.setValue(Color.GREEN);
                 updateMessage("loading...");
-                out.println("sell btc");
+                if (name.equals("btc")) out.println("sell btc");
+                else if (name.equals("eth")) out.println("sell eth");
                 out.println(qField.getText());
                 String serverReply = null;
                 try {
@@ -267,11 +269,13 @@ public class SellAssetBox {
             }
             else if (serverReply.equals("1")) {
                 msg.setFill(Color.RED);
-                msg.setText("you do not own that much bitcoin. re-login.");
+                if (name.equals("btc")) msg.setText("you do not own that much bitcoin. re-login.");
+                else if (name.equals("eth")) msg.setText("you do not own that much ether. re-login.");
             }
             else if (serverReply.equals("fail")) {
                 msg.setFill(Color.RED);
-                msg.setText("failed to retrieve bitcoin price");
+                if (name.equals("btc")) msg.setText("failed to retrieve bitcoin price");
+                else if (name.equals("eth")) msg.setText("failed to retrieve ether price");
             }
             else if (serverReply.equals("0")) {
                 msg.setFill(Color.GREEN);
@@ -283,7 +287,8 @@ public class SellAssetBox {
                     balText.setText(s);
                     String s2 = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", bal.bd, ")");
                     homeText.setText(s2);
-                    qText.setText("amount owned: " + quantityOwned + " XBT\n");
+                    if (name.equals("btc")) qText.setText("amount owned: " + quantityOwned + " XBT\n");
+                    else if (name.equals("eth")) qText.setText("amount owned: " + quantityOwned + " ETH\n");
                     // update table with new quantity
                     if (quantityOwned.compareTo(new BigDecimal("0")) == 0) table.getItems().remove(row);
                     else {

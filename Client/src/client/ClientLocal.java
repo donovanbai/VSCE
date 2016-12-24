@@ -214,15 +214,16 @@ public class ClientLocal extends Application {
         btcBtn.setOnAction(e -> {
             homeText2.setText("");
             buyBtn.setVisible(false);
-            BuyBtcBox box = new BuyBtcBox();
-            box.display(bal, homeText, username, out, in);
+            BuyCryptoBox box = new BuyCryptoBox();
+            box.display("btc", bal, homeText, username, out, in);
         });
         Button ethBtn = new Button("Buy ether");
         ethBtn.setFont(Font.font("Calibri", 20));
         ethBtn.setOnAction(e -> {
-            homeText2.setFill(Color.RED);
-            homeText2.setText("I told you this doesn't work yet");
+            homeText2.setText("");
             buyBtn.setVisible(false);
+            BuyCryptoBox box = new BuyCryptoBox();
+            box.display("eth", bal, homeText, username, out, in);
         });
         HBox hbox5 = new HBox(15);
         hbox5.getChildren().addAll(btcBtn, ethBtn);
@@ -306,6 +307,7 @@ public class ClientLocal extends Application {
                         String type = null;
                         if (arr.length == 2) type = arr[1];
                         else if (name.equals("btc")) type = "bitcoin";
+                        else if (name.equals("eth")) type = "ether";
                         BigDecimal quantity = new BigDecimal(in.readLine());
                         BigDecimal price = new BigDecimal(in.readLine());      
                         assets.add(new Asset(name, type, price, quantity));
@@ -347,12 +349,12 @@ public class ClientLocal extends Application {
         ButtonCell() {
             btn = new Button("sell");
             btn.setOnAction(e->{
-                SellAssetBox box = new SellAssetBox();
                 Asset a = getTableView().getItems().get(getIndex());
                 String type = a.getType();
                 String name = a.getName();
                 price = a.getPrice();
                 BigDecimal quantityOwned = a.getQuantity();
+                SellAssetBox box = new SellAssetBox();
                 box.display(type, name, price, bal, quantityOwned, homeText, username, table, getIndex(), out, in);
             });
         }
