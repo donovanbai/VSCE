@@ -448,7 +448,7 @@ public class ServerThread extends Thread {
         }
         return stockPrice;
     }
-    
+    // need to update
     private String getBtcPrice() throws Exception {
         String strURL = "https://api.quadrigacx.com/v2/ticker?book=btc_usd";
         URL btcURL = new URL(strURL);
@@ -463,6 +463,7 @@ public class ServerThread extends Thread {
         }
         return price;
     }
+    // need to update
     private String getEthPrice() throws Exception {
         // can't get usd price directly from quadrigacx.com so have to do a conversion
         String strURL = "https://api.quadrigacx.com/v2/ticker?book=eth_btc";
