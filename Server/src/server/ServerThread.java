@@ -265,7 +265,6 @@ public class ServerThread extends Thread {
                                 out.println("fail");
                                 continue;
                             }
-                            System.out.println(price);
                             out.println(price);
                         }
                         else if (inputLine.equals("buy btc")) {
@@ -450,44 +449,48 @@ public class ServerThread extends Thread {
     }
     // need to update
     private String getBtcPrice() throws Exception {
-        String strURL = "https://api.quadrigacx.com/v2/ticker?book=btc_usd";
+    	// btc to usd is low volume (outdated) so get btc to cad and convert to usd
+        String strURL = "https://api.quadrigacx.com/v2/ticker?book=btc_cad";
         URL btcURL = new URL(strURL);
         URLConnection btcURLConnection = btcURL.openConnection();
         //server returns 403 if user agent is not set
         btcURLConnection.setRequestProperty("User-Agent", "Mozilla/5.0");
-        String price;
+        BigDecimal cadPrice;
         try (BufferedReader in = new BufferedReader(new InputStreamReader(btcURLConnection.getInputStream()))) {
             Gson gson = new Gson(); // parse JSON reply
             Price btcPrice = gson.fromJson(in.readLine(), Price.class);
-            price = btcPrice.last.toString();
+            cadPrice = btcPrice.last; // price in CAD
         }
-        return price;
+        strURL = "https://download.finance.yahoo.com/d/quotes.csv?s=CADUSD=X&f=l1"; // get last trade price of cad to usd
+        URL yahooURL = new URL(strURL);
+        BigDecimal cadToUsd;
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(yahooURL.openStream()))) {
+        	cadToUsd = new BigDecimal(in.readLine());
+        }
+        BigDecimal usdPrice = cadPrice.multiply(cadToUsd).setScale(2, RoundingMode.UP);
+        return usdPrice.toString();
     }
     // need to update
     private String getEthPrice() throws Exception {
-        // can't get usd price directly from quadrigacx.com so have to do a conversion
-        String strURL = "https://api.quadrigacx.com/v2/ticker?book=eth_btc";
+        // can't get usd price directly from quadrigacx.com so have to get cad price then convert
+        String strURL = "https://api.quadrigacx.com/v2/ticker?book=eth_cad";
         URL ethURL = new URL(strURL);
         URLConnection ethURLConnection = ethURL.openConnection();
         //server returns 403 if user agent is not set
         ethURLConnection.setRequestProperty("User-Agent", "Mozilla/5.0");
-        BigDecimal ethToBtc;
+        BigDecimal cadPrice;
         try (BufferedReader in = new BufferedReader(new InputStreamReader(ethURLConnection.getInputStream()))) {
             Gson gson = new Gson(); // parse JSON reply
             Price price = gson.fromJson(in.readLine(), Price.class);
-            ethToBtc = price.last;
+            cadPrice = price.last;
         }
-        strURL = "https://api.quadrigacx.com/v2/ticker?book=btc_usd";
-        URL btcURL = new URL(strURL);
-        URLConnection btcURLConnection = btcURL.openConnection();
-        //server returns 403 if user agent is not set
-        btcURLConnection.setRequestProperty("User-Agent", "Mozilla/5.0");
-        BigDecimal btcToUsd;
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(btcURLConnection.getInputStream()))) {
-            Gson gson = new Gson(); // parse JSON reply
-            Price price = gson.fromJson(in.readLine(), Price.class);
-            btcToUsd = price.last;
+        strURL = "https://download.finance.yahoo.com/d/quotes.csv?s=CADUSD=X&f=l1"; // get last trade price of cad to usd
+        URL yahooURL = new URL(strURL);
+        BigDecimal cadToUsd;
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(yahooURL.openStream()))) {
+            cadToUsd = new BigDecimal(in.readLine());
         }
-        return ethToBtc.multiply(btcToUsd).setScale(2, RoundingMode.UP).toString();
+        BigDecimal usdPrice = cadPrice.multiply(cadToUsd).setScale(2, RoundingMode.UP);
+        return usdPrice.toString();
     }
 }

@@ -99,7 +99,7 @@ public class BuyCryptoBox {
         grid.add(msg, 0, 6);
         GridPane.setHalignment(msg, HPos.CENTER);
           
-        Scene scene = new Scene(grid, 400, 300);
+        Scene scene = new Scene(grid, 500, 300);
         window.setScene(scene);
         window.showAndWait();
     }

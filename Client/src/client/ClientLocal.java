@@ -122,7 +122,7 @@ public class ClientLocal extends Application {
         grid.add(hbButton, 0, 4);
         GridPane.setHalignment(hbButton, HPos.CENTER);
 
-        login = new Scene(grid, 500, 500);       
+        login = new Scene(grid, 500, 450);       
     }
     
     public void setupHome() {
@@ -244,7 +244,7 @@ public class ClientLocal extends Application {
         grid.add(logoutBtn, 0, 10);
         GridPane.setHalignment(logoutBtn, HPos.RIGHT);
       
-        home = new Scene(grid, 700, 500);
+        home = new Scene(grid, 750, 500);
     }
     
     public void setupProfile() {
@@ -265,22 +265,27 @@ public class ClientLocal extends Application {
         TableColumn<Asset, String> nameCol = new TableColumn<>("Name");
         nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
         nameCol.setStyle(style); //set text alignment in column
+        nameCol.setMinWidth(110);
         
         TableColumn<Asset, String> typeCol = new TableColumn<>("Type");
         typeCol.setCellValueFactory(new PropertyValueFactory<>("type"));
         typeCol.setStyle(style);
+        typeCol.setMinWidth(110);
         
         TableColumn<Asset, Double> priceCol = new TableColumn<>("Price");
         priceCol.setCellValueFactory(new PropertyValueFactory<>("price"));
         priceCol.setStyle(style);
+        priceCol.setMinWidth(120);
         
         TableColumn<Asset, Integer> quantityCol = new TableColumn<>("Quantity");
         quantityCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
         quantityCol.setStyle(style);
+        quantityCol.setMinWidth(180);
         
         TableColumn<Asset, Double> totalValCol = new TableColumn<>("Total Value");
         totalValCol.setCellValueFactory(new PropertyValueFactory<>("totalVal"));
         totalValCol.setStyle(style);
+        totalValCol.setMinWidth(160);
         
         TableColumn sellCol = new TableColumn("sell");
         sellCol.setCellFactory(new Callback<TableColumn<Asset, Asset>, TableCell<Asset, Asset>>() {
@@ -291,6 +296,7 @@ public class ClientLocal extends Application {
             }
         });
         sellCol.setStyle(style);
+        sellCol.setMinWidth(90);
         sellCol.setSortable(false); // no sense sorting the same button        
         
         ObservableList<Asset> assets = FXCollections.observableArrayList();
@@ -324,7 +330,8 @@ public class ClientLocal extends Application {
         task.setOnSucceeded(e -> {
             table = new TableView();
             table.setStyle(style);
-            table.setMinWidth(700);
+            table.setMinWidth(nameCol.getMinWidth() + typeCol.getMinWidth() + priceCol.getMinWidth() + quantityCol.getMinWidth() + totalValCol.getMinWidth() + sellCol.getMinWidth());
+            table.setMinHeight(600);
             table.setItems(assets);
             table.getColumns().addAll(nameCol, typeCol, priceCol, quantityCol, totalValCol, sellCol);
             table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY); // prevent an extra column from being created
@@ -338,7 +345,7 @@ public class ClientLocal extends Application {
             });
             grid.add(homeBtn, 0, 1);
             GridPane.setHalignment(homeBtn, HPos.RIGHT);
-            profile = new Scene(grid, 800, 500);
+            profile = new Scene(grid, table.getMinWidth() + 100, 700);
             window.setScene(profile);
         }); 
     }
