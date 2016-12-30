@@ -17,9 +17,9 @@ All user data is stored on Amazon DynamoDB
 - view account balance and inventory
 - buy/sell bitcoin
 - buy/sell ether
+- view gains/losses
 
 ## Future features:
-- view gains/losses
 - buy/sell currencies
 - view price history (graphs?)
 - search suggestions (?)

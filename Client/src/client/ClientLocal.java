@@ -24,24 +24,24 @@ import javafx.util.Callback;
  
 public class ClientLocal extends Application {
     
-    static int portNumber = 10000;
-    static InetAddress hostIP;
-    static Socket socket;
-    static PrintWriter out;
-    static BufferedReader in;
-    static BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
+    int portNumber = 10000;
+    InetAddress hostIP;
+    Socket socket;
+    PrintWriter out;
+    BufferedReader in;
+    BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
     
-    static Stage window;
-    static Scene login, home, profile;
-    static Text loginText = new Text(); 
-    static Text homeText = new Text();
-    static Text homeText2 = new Text();
-    static String username, pw;
-    static Button buyBtn = new Button("Buy");
+    Stage window;
+    Scene login, home, profile;
+    Text loginText = new Text(); 
+    Text homeText = new Text();
+    Text homeText2 = new Text();
+    String username, pw;
+    Button buyBtn = new Button("Buy");
     
-    static String stock, currency;
-    static BigDecimal price;
-    static BigDecimalWrapper bal;
+    String stock, currency;
+    BigDecimal price;
+    BigDecimalWrapper bal;
     TableView table;
     
     @Override
@@ -272,29 +272,43 @@ public class ClientLocal extends Application {
         typeCol.setStyle(style);
         typeCol.setMinWidth(110);
         
-        TableColumn<Asset, Double> priceCol = new TableColumn<>("Price");
+        TableColumn<Asset, BigDecimal> priceCol = new TableColumn<>("Price");
         priceCol.setCellValueFactory(new PropertyValueFactory<>("price"));
         priceCol.setStyle(style);
         priceCol.setMinWidth(120);
         
-        TableColumn<Asset, Integer> quantityCol = new TableColumn<>("Quantity");
+        TableColumn<Asset, BigDecimal> quantityCol = new TableColumn<>("Quantity");
         quantityCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
         quantityCol.setStyle(style);
         quantityCol.setMinWidth(180);
         
-        TableColumn<Asset, Double> totalValCol = new TableColumn<>("Total Value");
+        TableColumn<Asset, BigDecimal> totalValCol = new TableColumn<>("Total Value");
         totalValCol.setCellValueFactory(new PropertyValueFactory<>("totalVal"));
         totalValCol.setStyle(style);
         totalValCol.setMinWidth(160);
-        
-        TableColumn sellCol = new TableColumn("sell");
-        sellCol.setCellFactory(new Callback<TableColumn<Asset, Asset>, TableCell<Asset, Asset>>() {
-            
-            @Override
-            public TableCell<Asset, Asset> call(TableColumn<Asset, Asset> p) {
-                return new ButtonCell();
+
+        TableColumn gainCol = new TableColumn<>("Gain/Loss");
+        gainCol.setCellValueFactory(new PropertyValueFactory<>("gain"));
+        gainCol.setCellFactory(new Callback<TableColumn, TableCell>() {
+            public TableCell call(TableColumn param) {
+                return new TableCell<Asset, BigDecimal>() {
+                    @Override
+                    public void updateItem(BigDecimal item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (!isEmpty()) {
+                            if(item.compareTo(new BigDecimal("0")) == -1) this.setTextFill(Color.RED);
+                            else this.setTextFill(Color.GREEN);
+                            setText(item.toString());
+                        }
+                    }
+                };
             }
         });
+        gainCol.setStyle(style);
+        gainCol.setMinWidth(160);
+        
+        TableColumn sellCol = new TableColumn("sell");
+        sellCol.setCellFactory(e -> new ButtonCell());
         sellCol.setStyle(style);
         sellCol.setMinWidth(90);
         sellCol.setSortable(false); // no sense sorting the same button        
@@ -304,25 +318,26 @@ public class ClientLocal extends Application {
         Task task = new Task<Void>() {
             @Override
             protected Void call() {
-                out.println("get profile");               
-                try {
-                    String serverReply = in.readLine();
-                    while (!serverReply.equals("end")) {
-                        String[] arr = serverReply.split("_"); //eg. parse "aapl_stock" into "appl" and "stock"
-                        String name = arr[0];
-                        String type = null;
-                        if (arr.length == 2) type = arr[1];
-                        else if (name.equals("btc")) type = "bitcoin";
-                        else if (name.equals("eth")) type = "ether";
-                        BigDecimal quantity = new BigDecimal(in.readLine());
-                        BigDecimal price = new BigDecimal(in.readLine());      
-                        assets.add(new Asset(name, type, price, quantity));
-                        serverReply = in.readLine();
-                    }
-                } catch (IOException e) {
-                    System.out.println("IOException while getting server reply");
+            out.println("get profile");
+            try {
+                String serverReply = in.readLine();
+                while (!serverReply.equals("end")) {
+                    String[] arr = serverReply.split("_"); //eg. parse "aapl_stock" into "appl" and "stock"
+                    String name = arr[0];
+                    String type = null;
+                    if (arr.length == 2) type = arr[1];
+                    else if (name.equals("btc")) type = "bitcoin";
+                    else if (name.equals("eth")) type = "ether";
+                    BigDecimal quantity = new BigDecimal(in.readLine());
+                    BigDecimal price = new BigDecimal(in.readLine());
+                    BigDecimal orig = new BigDecimal(in.readLine());
+                    assets.add(new Asset(name, type, price, quantity, orig));
+                    serverReply = in.readLine();
                 }
-                return null;
+            } catch (IOException e) {
+                System.out.println("IOException while getting server reply");
+            }
+            return null;
             }
         };
         
@@ -330,10 +345,11 @@ public class ClientLocal extends Application {
         task.setOnSucceeded(e -> {
             table = new TableView();
             table.setStyle(style);
-            table.setMinWidth(nameCol.getMinWidth() + typeCol.getMinWidth() + priceCol.getMinWidth() + quantityCol.getMinWidth() + totalValCol.getMinWidth() + sellCol.getMinWidth());
+            table.setMinWidth(nameCol.getMinWidth() + typeCol.getMinWidth() + priceCol.getMinWidth() +
+                quantityCol.getMinWidth() + totalValCol.getMinWidth() + sellCol.getMinWidth() + gainCol.getMinWidth());
             table.setMinHeight(600);
             table.setItems(assets);
-            table.getColumns().addAll(nameCol, typeCol, priceCol, quantityCol, totalValCol, sellCol);
+            table.getColumns().addAll(nameCol, typeCol, priceCol, quantityCol, totalValCol, gainCol, sellCol);
             table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY); // prevent an extra column from being created
             nameCol.setSortType(TableColumn.SortType.ASCENDING);
             table.getSortOrder().add(nameCol); // default sort assets based on name

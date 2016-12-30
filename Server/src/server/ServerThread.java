@@ -53,7 +53,7 @@ public class ServerThread extends Thread {
                             .withPrimaryKey("username", username)
                             .withString("password", pw)
                             .withNumber("balance", 1000000.00);
-                        PutItemOutcome outcome = table.putItem(newUser);
+                        table.putItem(newUser);
                         System.out.println(socket.getInetAddress().getHostAddress() + " successfully created new user:");
                         System.out.println("\tusername: " + username);
                         System.out.println("\tpassword: " + pw);
@@ -139,8 +139,22 @@ public class ServerThread extends Thread {
                                 .withValueMap(new ValueMap()
                                     .withNumber(":v1", prevQuantity + quantity)
                                     .withNumber(":v2", newBal));
-                            UpdateItemOutcome outcome = table.updateItem(update);
+                            table.updateItem(update);
                             user = table.getItem("username", username); // fetch updated user
+                            // keep track of how much the user spent on this stock (for calculating gains)
+                            BigDecimal newOrig;
+                            if (!user.isPresent(stock + "_stock_orig")) newOrig = cost;
+                            else {
+                                BigDecimal oldOrig = new BigDecimal(user.getString(stock + "_stock_orig"));
+                                newOrig = oldOrig.add(cost);
+                            }
+                            update = new UpdateItemSpec()
+                                .withPrimaryKey("username", username)
+                                .withUpdateExpression("set " + stock + "_stock_orig = :v1")
+                                .withValueMap(new ValueMap()
+                                    .withNumber(":v1", newOrig));
+                            table.updateItem(update);
+                            user = table.getItem("username", username);
                             // logging
                             System.out.println(username + " purchased " + Integer.toString(quantity) + " shares of " + stock);
                             System.out.println(username + "'s new balance: " + newBal);
@@ -150,9 +164,9 @@ public class ServerThread extends Thread {
                         }
                         else if (inputLine.equals("sell stock")) {
                             String stock = in.readLine();
-                            int quantity = Integer.parseInt(in.readLine());
-                            int quantityOwned = user.getInt(stock + "_stock");
-                            if (quantity > quantityOwned) {
+                            BigDecimal quantity = new BigDecimal(in.readLine());
+                            BigDecimal quantityOwned = new BigDecimal(user.getInt(stock + "_stock"));
+                            if (quantity.compareTo(quantityOwned) == 1) {
                                 System.out.println(username + " tried to sell too many shares");
                                 out.println(1);
                                 continue;
@@ -171,45 +185,65 @@ public class ServerThread extends Thread {
                             }
 
                             BigDecimal stockPriceBigDec = new BigDecimal(stockPrice);
-                            BigDecimal total = stockPriceBigDec.multiply(new BigDecimal(quantity));
+                            BigDecimal total = stockPriceBigDec.multiply(quantity);
                             // total could have more than 2 decimal places so round up
                             total = total.setScale(2, RoundingMode.UP);
                             BigDecimal userBal = new BigDecimal(user.getString("balance"));
-                            //deduct stock from user's account and add balance
+                            // deduct stock from user's account and add balance
                             BigDecimal newBal = userBal.add(total);
+                            BigDecimal newQuantity = quantityOwned.subtract(quantity);
                             UpdateItemSpec update = new UpdateItemSpec()
                                 .withPrimaryKey("username", username)
                                 .withUpdateExpression("set " + stock + "_stock = :v1, balance = :v2")
                                 .withValueMap(new ValueMap()
-                                    .withNumber(":v1", quantityOwned - quantity)
+                                    .withNumber(":v1", newQuantity)
                                     .withNumber(":v2", newBal));
-                            UpdateItemOutcome outcome = table.updateItem(update);
+                            table.updateItem(update);
                             user = table.getItem("username", username); // fetch updated user
+                            BigDecimal newOrig = null;
                             if (user.getInt(stock + "_stock") == 0) {
+                                // remove stock and money spent on stock from database
                                 update = new UpdateItemSpec()
                                     .withPrimaryKey("username", username)
-                                    .withUpdateExpression("remove " + stock + "_stock");
-                                outcome = table.updateItem(update);
-                                user = table.getItem("username", username);
+                                    .withUpdateExpression("remove " + stock + "_stock, remove " + stock + "_stock_orig");
+                                table.updateItem(update);
                             }
+                            else {
+                                // update money spent on stock
+                                // eg. if user had spent $10000 on 100 shares
+                                // selling 50% of shares means reducing $10000 by 50%
+                                BigDecimal remainingPct = newQuantity.divide(quantityOwned, 10, RoundingMode.HALF_UP);
+                                BigDecimal oldOrig = new BigDecimal(user.getString(stock + "_stock_orig"));
+                                newOrig = remainingPct.multiply(oldOrig);
+                                newOrig = newOrig.setScale(2, RoundingMode.HALF_UP);
+                                update = new UpdateItemSpec()
+                                    .withPrimaryKey("username", username)
+                                    .withUpdateExpression("set " + stock + "_stock_orig = :v1")
+                                    .withValueMap(new ValueMap()
+                                        .withNumber(":v1", newOrig));
+                                table.updateItem(update);
+                            }
+                            user = table.getItem("username", username);
                             // logging
-                            System.out.println(username + " sold " + Integer.toString(quantity) + " shares of " + stock);
+                            System.out.println(username + " sold " + quantity + " shares of " + stock);
                             System.out.println(username + "'s new balance: " + newBal);
                             // let client know transaction succeeded, send their new balance and new quantity
                             out.println(0);
                             out.println(newBal);
-                            out.println(quantityOwned - quantity);
+                            out.println(newQuantity);
+                            if (user.isPresent(stock + "_stock")) out.println(newOrig);
                         }
                         else if (inputLine.equals("get profile")) {
                             System.out.println(username + " is viewing their profile");
                             Iterable<Map.Entry<String, Object>> i = user.attributes();
                             for (Map.Entry e : i) {
                                 if (!(e.getKey().equals("username") || e.getKey().equals("password") || e.getKey().equals("balance"))) {
-                                    out.println(e.getKey());
-                                    out.println(e.getValue());
                                     String[] arr = e.getKey().toString().split("_");
+                                    if (arr[arr.length-1].equals("orig")) continue;
                                     String name = arr[0];
                                     if (arr.length == 2) {
+                                        out.println(e.getKey());
+                                        out.println(e.getValue());
                                         String type = arr[1];
                                         if (type.equals("stock")) {
                                             String stockPrice = null;
@@ -219,9 +253,12 @@ public class ServerThread extends Thread {
                                                 System.out.print(e2.getMessage());
                                             }
                                             out.println(stockPrice);
+                                            out.println(user.getString(e.getKey().toString() + "_orig"));
                                         }
                                     }
                                     else if (name.equals("btc")) {
+                                        out.println(e.getKey());
+                                        out.println(e.getValue());
                                         String price = null;
                                         try {
                                             price = getBtcPrice();
@@ -229,8 +266,11 @@ public class ServerThread extends Thread {
                                             System.out.print(e2.getMessage());
                                         }
                                         out.println(price);
+                                        out.println(user.getString(e.getKey().toString() + "_orig"));
                                     }
                                     else if (name.equals("eth")) {
+                                        out.println(e.getKey());
+                                        out.println(e.getValue());
                                         String price = null;
                                         try {
                                             price = getEthPrice();
@@ -238,6 +278,7 @@ public class ServerThread extends Thread {
                                             System.out.print(e2.getMessage());
                                         }
                                         out.println(price);
+                                        out.println(user.getString(e.getKey().toString() + "_orig"));
                                     }
                                 }
                             }
@@ -299,8 +340,21 @@ public class ServerThread extends Thread {
                                 .withValueMap(new ValueMap()
                                     .withNumber(":v1", btcQuantity.add(prevQuantity))
                                     .withNumber(":v2", userBal.subtract(amount)));
-                            UpdateItemOutcome outcome = table.updateItem(update);
+                            table.updateItem(update);
                             user = table.getItem("username", username); // fetch updated user
+                            BigDecimal newOrig;
+                            if (!user.isPresent("btc_orig")) newOrig = amount;
+                            else {
+                                BigDecimal oldOrig = new BigDecimal(user.getString("btc_orig"));
+                                newOrig = oldOrig.add(amount);
+                            }
+                            update = new UpdateItemSpec()
+                                .withPrimaryKey("username", username)
+                                .withUpdateExpression("set " + "btc_orig = :v1")
+                                .withValueMap(new ValueMap()
+                                    .withNumber(":v1", newOrig));
+                            table.updateItem(update);
+                            user = table.getItem("username", username);
                             out.println(0);
                             out.println(btcQuantity.add(prevQuantity));
                             out.println(userBal.subtract(amount));
@@ -337,8 +391,21 @@ public class ServerThread extends Thread {
                                 .withValueMap(new ValueMap()
                                     .withNumber(":v1", ethQuantity.add(prevQuantity))
                                     .withNumber(":v2", userBal.subtract(amount)));
-                            UpdateItemOutcome outcome = table.updateItem(update);
+                            table.updateItem(update);
                             user = table.getItem("username", username); // fetch updated user
+                            BigDecimal newOrig;
+                            if (!user.isPresent("eth_orig")) newOrig = amount;
+                            else {
+                                BigDecimal oldOrig = new BigDecimal(user.getString("eth_orig"));
+                                newOrig = oldOrig.add(amount);
+                            }
+                            update = new UpdateItemSpec()
+                                .withPrimaryKey("username", username)
+                                .withUpdateExpression("set " + "eth_orig = :v1")
+                                .withValueMap(new ValueMap()
+                                    .withNumber(":v1", newOrig));
+                            table.updateItem(update);
+                            user = table.getItem("username", username);
                             out.println(0);
                             out.println(ethQuantity.add(prevQuantity));
                             out.println(userBal.subtract(amount));
@@ -361,17 +428,41 @@ public class ServerThread extends Thread {
                             }
                             BigDecimal bal = new BigDecimal(user.getString("balance"));
                             BigDecimal newBal = bal.add(quantity.multiply(price));
+                            BigDecimal newQuantity = quantityOwned.subtract(quantity);
                             UpdateItemSpec update = new UpdateItemSpec()
                                 .withPrimaryKey("username", username)
                                 .withUpdateExpression("set btc = :v1, balance = :v2")
                                 .withValueMap(new ValueMap()
-                                    .withNumber(":v1", quantityOwned.subtract(quantity))
+                                    .withNumber(":v1", newQuantity)
                                     .withNumber(":v2", newBal));
-                            UpdateItemOutcome outcome = table.updateItem(update);
+                            table.updateItem(update);
                             user = table.getItem("username", username); // fetch updated user
+                            BigDecimal newOrig = null;
+                            if (user.getString("btc").equals("0")) {
+                                // remove btc and money spent on btc from database
+                                update = new UpdateItemSpec()
+                                    .withPrimaryKey("username", username)
+                                    .withUpdateExpression("remove btc, remove btc_orig");
+                                table.updateItem(update);
+                            }
+                            else {
+                                // update money spent on btc
+                                BigDecimal remainingPct = newQuantity.divide(quantityOwned, 10, RoundingMode.HALF_UP);
+                                BigDecimal oldOrig = new BigDecimal(user.getString("btc_orig"));
+                                newOrig = remainingPct.multiply(oldOrig);
+                                newOrig = newOrig.setScale(2, RoundingMode.HALF_UP);
+                                update = new UpdateItemSpec()
+                                    .withPrimaryKey("username", username)
+                                    .withUpdateExpression("set btc_orig = :v1")
+                                    .withValueMap(new ValueMap()
+                                        .withNumber(":v1", newOrig));
+                                table.updateItem(update);
+                            }
+                            user = table.getItem("username", username);
                             out.println(0);
                             out.println(quantityOwned.subtract(quantity));
                             out.println(newBal);
+                            if (user.isPresent("btc")) out.println(newOrig);
                         }
                         else if (inputLine.equals("sell eth")) {
                             BigDecimal quantity = new BigDecimal(in.readLine());
@@ -391,17 +482,41 @@ public class ServerThread extends Thread {
                             }
                             BigDecimal bal = new BigDecimal(user.getString("balance"));
                             BigDecimal newBal = bal.add(quantity.multiply(price));
+                            BigDecimal newQuantity = quantityOwned.subtract(quantity);
                             UpdateItemSpec update = new UpdateItemSpec()
                                 .withPrimaryKey("username", username)
                                 .withUpdateExpression("set eth = :v1, balance = :v2")
                                 .withValueMap(new ValueMap()
-                                    .withNumber(":v1", quantityOwned.subtract(quantity))
+                                    .withNumber(":v1", newQuantity)
                                     .withNumber(":v2", newBal));
-                            UpdateItemOutcome outcome = table.updateItem(update);
+                            table.updateItem(update);
                             user = table.getItem("username", username); // fetch updated user
+                            BigDecimal newOrig = null;
+                            if (user.getString("eth").equals("0")) {
+                                // remove eth and money spent on eth from database
+                                update = new UpdateItemSpec()
+                                    .withPrimaryKey("username", username)
+                                    .withUpdateExpression("remove eth, remove eth_orig");
+                                table.updateItem(update);
+                            }
+                            else {
+                                // update money spent on eth
+                                BigDecimal remainingPct = newQuantity.divide(quantityOwned, 10, RoundingMode.HALF_UP);
+                                BigDecimal oldOrig = new BigDecimal(user.getString("eth_orig"));
+                                newOrig = remainingPct.multiply(oldOrig);
+                                newOrig = newOrig.setScale(2, RoundingMode.HALF_UP);
+                                update = new UpdateItemSpec()
+                                    .withPrimaryKey("username", username)
+                                    .withUpdateExpression("set eth_orig = :v1")
+                                    .withValueMap(new ValueMap()
+                                        .withNumber(":v1", newOrig));
+                                table.updateItem(update);
+                            }
+                            user = table.getItem("username", username);
                             out.println(0);
                             out.println(quantityOwned.subtract(quantity));
                             out.println(newBal);
+                            if (user.isPresent("eth")) out.println(newOrig);
                         }
                         else if (inputLine.equals("logout")) {
                             System.out.println(username + " logged out");
@@ -447,7 +562,6 @@ public class ServerThread extends Thread {
         }
         return stockPrice;
     }
-    // need to update
     private String getBtcPrice() throws Exception {
     	// btc to usd is low volume (outdated) so get btc to cad and convert to usd
         String strURL = "https://api.quadrigacx.com/v2/ticker?book=btc_cad";
@@ -470,13 +584,12 @@ public class ServerThread extends Thread {
         BigDecimal usdPrice = cadPrice.multiply(cadToUsd).setScale(2, RoundingMode.UP);
         return usdPrice.toString();
     }
-    // need to update
     private String getEthPrice() throws Exception {
         // can't get usd price directly from quadrigacx.com so have to get cad price then convert
         String strURL = "https://api.quadrigacx.com/v2/ticker?book=eth_cad";
         URL ethURL = new URL(strURL);
         URLConnection ethURLConnection = ethURL.openConnection();
-        //server returns 403 if user agent is not set
+        // server returns 403 if user agent is not set
         ethURLConnection.setRequestProperty("User-Agent", "Mozilla/5.0");
         BigDecimal cadPrice;
         try (BufferedReader in = new BufferedReader(new InputStreamReader(ethURLConnection.getInputStream()))) {

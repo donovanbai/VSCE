@@ -21,39 +21,39 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.util.Callback;
- 
+
 public class Client extends Application {
-    
-    static int portNumber = 10000;
-    static InetAddress hostIP;
-    static Socket socket;
-    static PrintWriter out;
-    static BufferedReader in;
-    static BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
-    
-    static Stage window;
-    static Scene login, home, profile;
-    static Text loginText = new Text(); 
-    static Text homeText = new Text();
-    static Text homeText2 = new Text();
-    static String username, pw;
-    static Button buyBtn = new Button("Buy");
-    
-    static String stock, currency;
-    static BigDecimal price;
-    static BigDecimalWrapper bal;
+
+    int portNumber = 10000;
+    InetAddress hostIP;
+    Socket socket;
+    PrintWriter out;
+    BufferedReader in;
+    BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
+
+    Stage window;
+    Scene login, home, profile;
+    Text loginText = new Text();
+    Text homeText = new Text();
+    Text homeText2 = new Text();
+    String username, pw;
+    Button buyBtn = new Button("Buy");
+
+    String stock, currency;
+    BigDecimal price;
+    BigDecimalWrapper bal;
     TableView table;
-    
+
     @Override
     public void start(Stage primaryStage) throws Exception {
         setupLogin();
 
         window = primaryStage;
         window.setTitle("VSCE");
-        window.setScene(login);        
+        window.setScene(login);
         window.show();
     }
-    
+
     public void setupLogin() {
         GridPane grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
@@ -83,19 +83,19 @@ public class Client extends Application {
         hbox2.getChildren().addAll(pwLabel, pwField);
         grid.add(hbox2, 0, 2);
         GridPane.setHalignment(hbox2, HPos.CENTER);
-        
+
         userField.setOnAction(e -> {
             username = userField.getText();
             pw = pwField.getText();
-            login();           
+            login();
         });
-        
+
         pwField.setOnAction(e -> {
             username = userField.getText();
             pw = pwField.getText();
-            login(); 
+            login();
         });
-        
+
         loginText.setFont(Font.font("Calibri", 20));
         grid.add(loginText, 0, 6);
         GridPane.setHalignment(loginText, HPos.CENTER);
@@ -107,7 +107,7 @@ public class Client extends Application {
             pw = pwField.getText();
             login();
         });
-        
+
         Button registerBtn = new Button("Register");
         registerBtn.setFont(Font.font("Calibri", 20));
         registerBtn.setOnAction(e -> {
@@ -122,54 +122,54 @@ public class Client extends Application {
         grid.add(hbButton, 0, 4);
         GridPane.setHalignment(hbButton, HPos.CENTER);
 
-        login = new Scene(grid, 500, 450);       
+        login = new Scene(grid, 500, 450);
     }
-    
+
     public void setupHome() {
         GridPane grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
         grid.setPadding(new Insets(25, 25, 25, 25)); //top, right, bottom, left
         grid.setHgap(15);
         grid.setVgap(15);
-                     
+
         homeText.setText(String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", bal.bd, ")"));
         homeText.setFont(Font.font("Calibri", 30));
-        grid.add(homeText, 0, 0); 
+        grid.add(homeText, 0, 0);
         GridPane.setHalignment(homeText, HPos.CENTER);
-        
+
         Button profBtn = new Button("View profile");
         profBtn.setFont(Font.font("Calibri", 20));
         profBtn.setOnAction(e -> {
             setupProfile();
-        });        
+        });
         grid.add(profBtn, 0, 2);
         GridPane.setHalignment(profBtn, HPos.CENTER);
-        
+
         Label stockLabel = new Label("search for a stock (eg. aapl)");
         stockLabel.setFont(Font.font("Calibri", 20));
-        
+
         TextField stockField = new TextField();
         stockField.setFont(Font.font("Calibri", 20));
         stockField.setOnAction(e -> {
             stock = stockField.getText();
-            searchStock();  
+            searchStock();
         });
-        
+
         Button stockBtn = new Button("search");
         stockBtn.setFont(Font.font("Calibri", 20));
         stockBtn.setOnAction(e -> {
             stock = stockField.getText();
             searchStock();
         });
-        
+
         HBox hbox = new HBox(15);
         hbox.getChildren().addAll(stockLabel, stockField, stockBtn);
         grid.add(hbox, 0, 5);
         GridPane.setHalignment(hbox, HPos.CENTER);
-           
+
         Label currencyLabel = new Label("search for a currency pair\n(eg. usd/cad)");
         currencyLabel.setFont(Font.font("Calibri", 20));
-        
+
         TextField currencyField = new TextField();
         currencyField.setFont(Font.font("Calibri", 20));
         currencyField.setOnAction(e -> {
@@ -179,7 +179,7 @@ public class Client extends Application {
             homeText2.setText("I told you this doesn't work yet");
             buyBtn.setVisible(false);
         });
-        
+
         Button currencyBtn = new Button("search");
         currencyBtn.setFont(Font.font("Calibri", 20));
         currencyBtn.setOnAction(e -> {
@@ -189,12 +189,12 @@ public class Client extends Application {
             homeText2.setText("I told you this doesn't work yet");
             buyBtn.setVisible(false);
         });
-        
+
         HBox hbox2 = new HBox(15);
         hbox2.getChildren().addAll(currencyLabel, currencyField, currencyBtn);
         grid.add(hbox2, 0, 6);
         GridPane.setHalignment(hbox2, HPos.CENTER);
-        
+
         buyBtn.setVisible(false);
         buyBtn.setFont(Font.font("Calibri", 20));
         buyBtn.setOnAction(e -> {
@@ -204,11 +204,11 @@ public class Client extends Application {
         HBox hbox4 = new HBox(15);
         homeText2.setText("");
         homeText2.setFont(Font.font("Calibri", 20));
-        hbox4.getChildren().addAll(homeText2, buyBtn);   
+        hbox4.getChildren().addAll(homeText2, buyBtn);
         grid.add(hbox4, 0, 7);
         GridPane.setHalignment(hbox4, HPos.CENTER);
         GridPane.setFillWidth(hbox4, false); //otherwise hbox2 would be too wide
-        
+
         Button btcBtn = new Button("Buy bitcoin");
         btcBtn.setFont(Font.font("Calibri", 20));
         btcBtn.setOnAction(e -> {
@@ -230,7 +230,7 @@ public class Client extends Application {
         grid.add(hbox5, 0, 9);
         GridPane.setHalignment(hbox5, HPos.CENTER);
         GridPane.setFillWidth(hbox5, false);
-        
+
         Button logoutBtn = new Button("Logout");
         logoutBtn.setFont(Font.font("Calibri", 20));
         logoutBtn.setOnAction(e -> {
@@ -243,68 +243,82 @@ public class Client extends Application {
         });
         grid.add(logoutBtn, 0, 10);
         GridPane.setHalignment(logoutBtn, HPos.RIGHT);
-      
+
         home = new Scene(grid, 750, 500);
     }
-    
+
     public void setupProfile() {
         //show loading screen while fetching data from server
         Text text = new Text("loading...");
         VBox vbox = new VBox(text);
         profile = new Scene(vbox, 500, 500);
         window.setScene(profile);
-        
+
         GridPane grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
         grid.setPadding(new Insets(25, 25, 25, 25)); //top, right, bottom, left
         grid.setHgap(15);
         grid.setVgap(15);
-        
+
         String style = "-fx-alignment: CENTER; -fx-font-family: Calibri; -fx-font-size: 20";
-        
+
         TableColumn<Asset, String> nameCol = new TableColumn<>("Name");
         nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
         nameCol.setStyle(style); //set text alignment in column
         nameCol.setMinWidth(110);
-        
+
         TableColumn<Asset, String> typeCol = new TableColumn<>("Type");
         typeCol.setCellValueFactory(new PropertyValueFactory<>("type"));
         typeCol.setStyle(style);
         typeCol.setMinWidth(110);
-        
-        TableColumn<Asset, Double> priceCol = new TableColumn<>("Price");
+
+        TableColumn<Asset, BigDecimal> priceCol = new TableColumn<>("Price");
         priceCol.setCellValueFactory(new PropertyValueFactory<>("price"));
         priceCol.setStyle(style);
         priceCol.setMinWidth(120);
-        
-        TableColumn<Asset, Integer> quantityCol = new TableColumn<>("Quantity");
+
+        TableColumn<Asset, BigDecimal> quantityCol = new TableColumn<>("Quantity");
         quantityCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
         quantityCol.setStyle(style);
         quantityCol.setMinWidth(180);
-        
-        TableColumn<Asset, Double> totalValCol = new TableColumn<>("Total Value");
+
+        TableColumn<Asset, BigDecimal> totalValCol = new TableColumn<>("Total Value");
         totalValCol.setCellValueFactory(new PropertyValueFactory<>("totalVal"));
         totalValCol.setStyle(style);
         totalValCol.setMinWidth(160);
-        
-        TableColumn sellCol = new TableColumn("sell");
-        sellCol.setCellFactory(new Callback<TableColumn<Asset, Asset>, TableCell<Asset, Asset>>() {
-            
-            @Override
-            public TableCell<Asset, Asset> call(TableColumn<Asset, Asset> p) {
-                return new ButtonCell();
+
+        TableColumn gainCol = new TableColumn<>("Gain/Loss");
+        gainCol.setCellValueFactory(new PropertyValueFactory<>("gain"));
+        gainCol.setCellFactory(new Callback<TableColumn, TableCell>() {
+            public TableCell call(TableColumn param) {
+                return new TableCell<Asset, BigDecimal>() {
+                    @Override
+                    public void updateItem(BigDecimal item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (!isEmpty()) {
+                            if(item.compareTo(new BigDecimal("0")) == -1) this.setTextFill(Color.RED);
+                            else this.setTextFill(Color.GREEN);
+                            setText(item.toString());
+                        }
+                    }
+                };
             }
         });
+        gainCol.setStyle(style);
+        gainCol.setMinWidth(160);
+
+        TableColumn sellCol = new TableColumn("sell");
+        sellCol.setCellFactory(e -> new ButtonCell());
         sellCol.setStyle(style);
         sellCol.setMinWidth(90);
-        sellCol.setSortable(false); // no sense sorting the same button        
-        
+        sellCol.setSortable(false); // no sense sorting the same button
+
         ObservableList<Asset> assets = FXCollections.observableArrayList();
-    
+
         Task task = new Task<Void>() {
             @Override
             protected Void call() {
-                out.println("get profile");               
+                out.println("get profile");
                 try {
                     String serverReply = in.readLine();
                     while (!serverReply.equals("end")) {
@@ -315,8 +329,9 @@ public class Client extends Application {
                         else if (name.equals("btc")) type = "bitcoin";
                         else if (name.equals("eth")) type = "ether";
                         BigDecimal quantity = new BigDecimal(in.readLine());
-                        BigDecimal price = new BigDecimal(in.readLine());      
-                        assets.add(new Asset(name, type, price, quantity));
+                        BigDecimal price = new BigDecimal(in.readLine());
+                        BigDecimal orig = new BigDecimal(in.readLine());
+                        assets.add(new Asset(name, type, price, quantity, orig));
                         serverReply = in.readLine();
                     }
                 } catch (IOException e) {
@@ -325,15 +340,16 @@ public class Client extends Application {
                 return null;
             }
         };
-        
+
         new Thread(task).start();
         task.setOnSucceeded(e -> {
             table = new TableView();
             table.setStyle(style);
-            table.setMinWidth(nameCol.getMinWidth() + typeCol.getMinWidth() + priceCol.getMinWidth() + quantityCol.getMinWidth() + totalValCol.getMinWidth() + sellCol.getMinWidth());
+            table.setMinWidth(nameCol.getMinWidth() + typeCol.getMinWidth() + priceCol.getMinWidth() +
+                    quantityCol.getMinWidth() + totalValCol.getMinWidth() + sellCol.getMinWidth() + gainCol.getMinWidth());
             table.setMinHeight(600);
             table.setItems(assets);
-            table.getColumns().addAll(nameCol, typeCol, priceCol, quantityCol, totalValCol, sellCol);
+            table.getColumns().addAll(nameCol, typeCol, priceCol, quantityCol, totalValCol, gainCol, sellCol);
             table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY); // prevent an extra column from being created
             nameCol.setSortType(TableColumn.SortType.ASCENDING);
             table.getSortOrder().add(nameCol); // default sort assets based on name
@@ -347,12 +363,12 @@ public class Client extends Application {
             GridPane.setHalignment(homeBtn, HPos.RIGHT);
             profile = new Scene(grid, table.getMinWidth() + 100, 700);
             window.setScene(profile);
-        }); 
+        });
     }
-    
+
     private class ButtonCell extends TableCell<Asset, Asset> {
         Button btn;
-        
+
         ButtonCell() {
             btn = new Button("sell");
             btn.setOnAction(e->{
@@ -365,7 +381,7 @@ public class Client extends Application {
                 box.display(type, name, price, bal, quantityOwned, homeText, username, table, getIndex(), out, in);
             });
         }
-        
+
         @Override
         protected void updateItem(Asset a, boolean b) {
             super.updateItem(a, b);
@@ -386,7 +402,7 @@ public class Client extends Application {
                 textColorProperty.setValue(Color.GREEN);
                 updateMessage("connecting...");
                 try {
-                	hostIP = InetAddress.getByName("162.156.144.68");
+                    hostIP = InetAddress.getByName("162.156.144.68");
                     socket = new Socket(hostIP, portNumber);
                     out = new PrintWriter(socket.getOutputStream(), true);
                     in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -433,7 +449,7 @@ public class Client extends Application {
                 }
             }
         };
-        
+
         loginText.fillProperty().bind(textColorProperty);
         loginText.textProperty().bind(task.messageProperty());
         new Thread(task).start();
@@ -452,7 +468,7 @@ public class Client extends Application {
             }
         });
     }
-    
+
     public void register() {
         if (username.equals("") || pw.equals("")) {
             loginText.setFill(Color.RED);
@@ -466,7 +482,7 @@ public class Client extends Application {
                 textColorProperty.setValue(Color.GREEN);
                 updateMessage("connecting...");
                 try {
-                	hostIP = InetAddress.getByName("162.156.144.68");
+                    hostIP = InetAddress.getByName("162.156.144.68");
                     socket = new Socket(hostIP, portNumber);
                     out = new PrintWriter(socket.getOutputStream(), true);
                     in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -513,15 +529,15 @@ public class Client extends Application {
                 socket.close();
             } catch (Exception ex) {} // no need to do anything
         });
-    } 
-    
+    }
+
     public void searchStock() {
         BooleanProperty showBuyBtn = new SimpleBooleanProperty(false);
         buyBtn.visibleProperty().bind(showBuyBtn);
         ObjectProperty textColorProperty = new SimpleObjectProperty();
         Task task = new Task<Void>() {
             @Override
-            protected Void call() {              
+            protected Void call() {
                 if (stock.equals("")) {
                     textColorProperty.setValue(Color.RED);
                     updateMessage("field cannot be empty");
@@ -554,24 +570,24 @@ public class Client extends Application {
                 return null;
             }
         };
-        
+
         homeText2.fillProperty().bind(textColorProperty);
-        homeText2.textProperty().bind(task.messageProperty());       
-        new Thread(task).start(); 
+        homeText2.textProperty().bind(task.messageProperty());
+        new Thread(task).start();
         task.setOnSucceeded(e -> {
             homeText2.textProperty().unbind();
             homeText2.fillProperty().unbind();
             buyBtn.visibleProperty().unbind();
         });
     }
-    
+
     public void searchCurrency() {
         BooleanProperty showBuyBtn = new SimpleBooleanProperty(false);
         buyBtn.visibleProperty().bind(showBuyBtn);
         ObjectProperty textColorProperty = new SimpleObjectProperty();
         Task task = new Task<Void>() {
             @Override
-            protected Void call() {              
+            protected Void call() {
                 if (currency.equals("")) {
                     textColorProperty.setValue(Color.RED);
                     updateMessage("field cannot be empty");
@@ -604,17 +620,17 @@ public class Client extends Application {
                 return null;
             }
         };
-        
+
         homeText2.fillProperty().bind(textColorProperty);
-        homeText2.textProperty().bind(task.messageProperty());       
-        new Thread(task).start(); 
+        homeText2.textProperty().bind(task.messageProperty());
+        new Thread(task).start();
         task.setOnSucceeded(e -> {
             homeText2.textProperty().unbind();
             homeText2.fillProperty().unbind();
             buyBtn.visibleProperty().unbind();
         });
     }
-    
+
     public static void main(String[] args) {
         launch(args);
     }

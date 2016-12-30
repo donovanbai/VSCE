@@ -189,20 +189,21 @@ public class SellAssetBox {
                 msg.setText("sale complete!"); 
                 try {
                     BigDecimal newBal = new BigDecimal(in.readLine());
-                    int newQuantity = Integer.parseInt(in.readLine());
+                    BigDecimal newQuantity = new BigDecimal(in.readLine());
                     String s = String.format("%s $%,.2f", "your balance:", newBal);
                     balText.setText(s);
                     String s2 = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", newBal, ")");
                     homeText.setText(s2);
                     bal.bd = newBal;
-                    quantityOwned = new BigDecimal(newQuantity);
+                    quantityOwned = newQuantity;
                     qText.setText("shares owned: " + newQuantity + "\n");
-                    // update table with new quantity
-                    if (newQuantity == 0) table.getItems().remove(row);
+                    // update table with new quantity and new gain/loss
+                    if (newQuantity.compareTo(new BigDecimal("0")) == 0) table.getItems().remove(row);
                     else {
                         String type = table.getItems().get(row).getType();
                         BigDecimal price = table.getItems().get(row).getPrice();
-                        table.getItems().set(row, new Asset(name, type, price, new BigDecimal(newQuantity)));
+                        BigDecimal newOrig = new BigDecimal(in.readLine());
+                        table.getItems().set(row, new Asset(name, type, price, newQuantity, newOrig));
                     }
                 } catch (IOException i) {
                     System.out.println("IOException while getting server reply");
@@ -294,7 +295,8 @@ public class SellAssetBox {
                     else {
                         String type = table.getItems().get(row).getType();
                         BigDecimal price = table.getItems().get(row).getPrice();
-                        table.getItems().set(row, new Asset(name, type, price, quantityOwned));
+                        BigDecimal newOrig = new BigDecimal(in.readLine());
+                        table.getItems().set(row, new Asset(name, type, price, quantityOwned, newOrig));
                     }
                 } catch (IOException i) {
                     System.out.println("IOException while getting server reply");

@@ -104,7 +104,7 @@ public class BuyCryptoBox {
         window.showAndWait();
     }
     
-    private void fetchPrice() { // fetch bitcoin price to display on UIz
+    private void fetchPrice() { // fetch bitcoin price to display on UI
         ObjectProperty textColorProperty = new SimpleObjectProperty();
         Task task = new Task<Integer>() {
             @Override
