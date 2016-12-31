@@ -1,9 +1,5 @@
 package client;
 
-import java.io.*;
-import java.math.BigDecimal;
-import java.net.*;
-
 import javafx.application.Application;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ObjectProperty;
@@ -12,15 +8,30 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
-import javafx.geometry.*;
+import javafx.geometry.HPos;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.text.*;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.*;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Callback;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.math.BigDecimal;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.util.Comparator;
 
 public class Client extends Application {
 
@@ -42,7 +53,7 @@ public class Client extends Application {
     String stock, currency;
     BigDecimal price;
     BigDecimalWrapper bal;
-    TableView table;
+    TableView<Asset> table;
 
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -280,7 +291,7 @@ public class Client extends Application {
         TableColumn<Asset, BigDecimal> quantityCol = new TableColumn<>("Quantity");
         quantityCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
         quantityCol.setStyle(style);
-        quantityCol.setMinWidth(180);
+        quantityCol.setMinWidth(190);
 
         TableColumn<Asset, BigDecimal> totalValCol = new TableColumn<>("Total Value");
         totalValCol.setCellValueFactory(new PropertyValueFactory<>("totalVal"));
@@ -300,6 +311,7 @@ public class Client extends Application {
                             else this.setTextFill(Color.GREEN);
                             setText(item.toString());
                         }
+                        else setText(null); // remove text if the corresponding row is removed
                     }
                 };
             }
@@ -318,6 +330,8 @@ public class Client extends Application {
         Task task = new Task<Void>() {
             @Override
             protected Void call() {
+                Asset.totalTotalVal = new BigDecimal("0");
+                Asset.totalGain = new BigDecimal("0");
                 out.println("get profile");
                 try {
                     String serverReply = in.readLine();
@@ -343,6 +357,7 @@ public class Client extends Application {
 
         new Thread(task).start();
         task.setOnSucceeded(e -> {
+            assets.add(new Asset("total", Asset.totalTotalVal, Asset.totalGain)); // replace this with real total
             table = new TableView();
             table.setStyle(style);
             table.setMinWidth(nameCol.getMinWidth() + typeCol.getMinWidth() + priceCol.getMinWidth() +
@@ -353,6 +368,15 @@ public class Client extends Application {
             table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY); // prevent an extra column from being created
             nameCol.setSortType(TableColumn.SortType.ASCENDING);
             table.getSortOrder().add(nameCol); // default sort assets based on name
+            table.sortPolicyProperty().set(t -> {
+                Comparator<Asset> comparator = (r1, r2)
+                        -> r1.getName().equals("total") ? 1
+                        : r2.getName().equals("total") ? -1
+                        : t.getComparator() == null ? 0
+                        : t.getComparator().compare(r1, r2);
+                FXCollections.sort(table.getItems(), comparator);
+                return true;
+            });
             grid.add(table, 0, 0);
             Button homeBtn = new Button("Home");
             homeBtn.setFont(Font.font("Calibri", 20));
@@ -383,9 +407,12 @@ public class Client extends Application {
         }
 
         @Override
-        protected void updateItem(Asset a, boolean b) {
-            super.updateItem(a, b);
-            if (!b) setGraphic(btn); // only show sell button if row is not empty
+        protected void updateItem(Asset a, boolean empty) {
+            super.updateItem(a, empty);
+            if (!empty && !getTableView().getItems().get(getIndex()).getName().equals("total")) {
+                setGraphic(btn); // only show sell button if row is not empty
+            }
+            else setGraphic(null); // remove button if corresponding row is removed
         }
     }
 

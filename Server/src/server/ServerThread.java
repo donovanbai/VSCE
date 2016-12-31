@@ -1,9 +1,5 @@
 package server;
 
-import java.io.*;
-import java.net.*;
-import java.util.Map;
-
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
@@ -12,14 +8,21 @@ import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
-import com.amazonaws.services.dynamodbv2.document.PutItemOutcome;
 import com.amazonaws.services.dynamodbv2.document.Table;
-import com.amazonaws.services.dynamodbv2.document.UpdateItemOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.UpdateItemSpec;
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
 import com.google.gson.Gson;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.Socket;
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.Map;
 
 public class ServerThread extends Thread {
     private Socket socket;
@@ -205,7 +208,7 @@ public class ServerThread extends Thread {
                                 // remove stock and money spent on stock from database
                                 update = new UpdateItemSpec()
                                     .withPrimaryKey("username", username)
-                                    .withUpdateExpression("remove " + stock + "_stock, remove " + stock + "_stock_orig");
+                                    .withUpdateExpression("remove " + stock + "_stock, " + stock + "_stock_orig");
                                 table.updateItem(update);
                             }
                             else {
@@ -442,7 +445,7 @@ public class ServerThread extends Thread {
                                 // remove btc and money spent on btc from database
                                 update = new UpdateItemSpec()
                                     .withPrimaryKey("username", username)
-                                    .withUpdateExpression("remove btc, remove btc_orig");
+                                    .withUpdateExpression("remove btc, btc_orig");
                                 table.updateItem(update);
                             }
                             else {
@@ -496,7 +499,7 @@ public class ServerThread extends Thread {
                                 // remove eth and money spent on eth from database
                                 update = new UpdateItemSpec()
                                     .withPrimaryKey("username", username)
-                                    .withUpdateExpression("remove eth, remove eth_orig");
+                                    .withUpdateExpression("remove eth, eth_orig");
                                 table.updateItem(update);
                             }
                             else {

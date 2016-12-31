@@ -11,6 +11,9 @@ public class Asset {
     private BigDecimal totalVal;
     private BigDecimal gain;
 
+    public static BigDecimal totalTotalVal;
+    public static BigDecimal totalGain;
+
     public Asset(String name, String type, BigDecimal price, BigDecimal quantity, BigDecimal orig) {
         this.name = name;
         this.type = type;
@@ -19,6 +22,16 @@ public class Asset {
         this.totalVal = price.multiply((quantity));
         this.totalVal = this.totalVal.setScale(2, RoundingMode.UP); // round totalVal to 2 decimal places
         this.gain = totalVal.subtract(orig);
+        totalTotalVal = totalTotalVal.add(this.totalVal);
+        totalGain = totalGain.add(this.gain);
+    }
+    public Asset(String name, BigDecimal totalVal, BigDecimal gain) {
+        this.name = name;
+        type = null;
+        price = null;
+        quantity = null;
+        this.totalVal = totalVal;
+        this.gain = gain;
     }
 
     public String getName() { return name; }

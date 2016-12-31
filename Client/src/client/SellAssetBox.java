@@ -1,17 +1,8 @@
 package client;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.math.BigDecimal;
-import java.util.Locale;
 import javafx.beans.binding.Bindings;
-import javafx.beans.property.DoubleProperty;
-import javafx.beans.property.IntegerProperty;
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleDoubleProperty;
-import javafx.beans.property.SimpleIntegerProperty;
-import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.*;
+import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.geometry.HPos;
 import javafx.geometry.Pos;
@@ -29,6 +20,12 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
 import javafx.util.converter.NumberStringConverter;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.math.BigDecimal;
+import java.util.Locale;
 
 public class SellAssetBox {
     PrintWriter out;
@@ -198,6 +195,8 @@ public class SellAssetBox {
                     quantityOwned = newQuantity;
                     qText.setText("shares owned: " + newQuantity + "\n");
                     // update table with new quantity and new gain/loss
+                    Asset.totalTotalVal = Asset.totalTotalVal.subtract(table.getItems().get(row).getTotalVal());
+                    Asset.totalGain = Asset.totalGain.subtract(table.getItems().get(row).getGain());
                     if (newQuantity.compareTo(new BigDecimal("0")) == 0) table.getItems().remove(row);
                     else {
                         String type = table.getItems().get(row).getType();
@@ -205,6 +204,8 @@ public class SellAssetBox {
                         BigDecimal newOrig = new BigDecimal(in.readLine());
                         table.getItems().set(row, new Asset(name, type, price, newQuantity, newOrig));
                     }
+                    ObservableList<Asset> items = table.getItems();
+                    items.set(items.size()-1, new Asset("total", Asset.totalTotalVal, Asset.totalGain));
                 } catch (IOException i) {
                     System.out.println("IOException while getting server reply");
                 }
@@ -290,7 +291,9 @@ public class SellAssetBox {
                     homeText.setText(s2);
                     if (name.equals("btc")) qText.setText("amount owned: " + quantityOwned + " XBT\n");
                     else if (name.equals("eth")) qText.setText("amount owned: " + quantityOwned + " ETH\n");
-                    // update table with new quantity
+                    // update table with new quantity and new gain/loss
+                    Asset.totalTotalVal = Asset.totalTotalVal.subtract(table.getItems().get(row).getTotalVal());
+                    Asset.totalGain = Asset.totalGain.subtract(table.getItems().get(row).getGain());
                     if (quantityOwned.compareTo(new BigDecimal("0")) == 0) table.getItems().remove(row);
                     else {
                         String type = table.getItems().get(row).getType();
@@ -298,6 +301,8 @@ public class SellAssetBox {
                         BigDecimal newOrig = new BigDecimal(in.readLine());
                         table.getItems().set(row, new Asset(name, type, price, quantityOwned, newOrig));
                     }
+                    ObservableList<Asset> items = table.getItems();
+                    items.set(items.size()-1, new Asset("total", Asset.totalTotalVal, Asset.totalGain));
                 } catch (IOException i) {
                     System.out.println("IOException while getting server reply");
                 }
