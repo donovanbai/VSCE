@@ -54,6 +54,7 @@ public class ClientLocal extends Application {
     BigDecimal price;
     BigDecimalWrapper bal;
     TableView<Asset> table;
+    boolean searchedForStock; // true if user searched for stock, false if searched for currency pair
     
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -178,27 +179,21 @@ public class ClientLocal extends Application {
         grid.add(hbox, 0, 5);
         GridPane.setHalignment(hbox, HPos.CENTER);
            
-        Label currencyLabel = new Label("search for a currency pair\n(eg. usd/cad)");
+        Label currencyLabel = new Label("search for a currency\n(eg. cad)");
         currencyLabel.setFont(Font.font("Calibri", 20));
         
         TextField currencyField = new TextField();
         currencyField.setFont(Font.font("Calibri", 20));
         currencyField.setOnAction(e -> {
-            /*currency = currencyField.getText();
-            searchCurrency();*/
-            homeText2.setFill(Color.RED);
-            homeText2.setText("I told you this doesn't work yet");
-            buyBtn.setVisible(false);
+            currency = currencyField.getText();
+            searchCurrency();
         });
         
         Button currencyBtn = new Button("search");
         currencyBtn.setFont(Font.font("Calibri", 20));
         currencyBtn.setOnAction(e -> {
-            /*currency = currencyField.getText();
-            searchCurrency();*/
-            homeText2.setFill(Color.RED);
-            homeText2.setText("I told you this doesn't work yet");
-            buyBtn.setVisible(false);
+            currency = currencyField.getText();
+            searchCurrency();
         });
         
         HBox hbox2 = new HBox(15);
@@ -209,8 +204,9 @@ public class ClientLocal extends Application {
         buyBtn.setVisible(false);
         buyBtn.setFont(Font.font("Calibri", 20));
         buyBtn.setOnAction(e -> {
-            BuyStockBox box = new BuyStockBox();
-            box.display(stock, price, bal, homeText, username, out, in);
+            BuyAssetBox box = new BuyAssetBox();
+            if (searchedForStock) box.display(true, stock, price, bal, homeText, username, out, in);
+            else box.display(false, currency, price, bal, homeText, username, out, in);
         });
         HBox hbox4 = new HBox(15);
         homeText2.setText("");
@@ -339,7 +335,10 @@ public class ClientLocal extends Application {
                     String[] arr = serverReply.split("_"); //eg. parse "aapl_stock" into "appl" and "stock"
                     String name = arr[0];
                     String type = null;
-                    if (arr.length == 2) type = arr[1];
+                    if (arr.length == 2) {
+                        if (arr[1].equals("stock")) type = "stock";
+                        else type = "currency";
+                    }
                     else if (name.equals("btc")) type = "bitcoin";
                     else if (name.equals("eth")) type = "ether";
                     BigDecimal quantity = new BigDecimal(in.readLine());
@@ -559,17 +558,18 @@ public class ClientLocal extends Application {
     } 
     
     public void searchStock() {
+        if (stock.equals("")) {
+            homeText2.setFill(Color.RED);
+            homeText2.setText("field cannot be empty");
+            buyBtn.setVisible(false);
+            return;
+        }
         BooleanProperty showBuyBtn = new SimpleBooleanProperty(false);
         buyBtn.visibleProperty().bind(showBuyBtn);
         ObjectProperty textColorProperty = new SimpleObjectProperty();
         Task task = new Task<Void>() {
             @Override
-            protected Void call() {              
-                if (stock.equals("")) {
-                    textColorProperty.setValue(Color.RED);
-                    updateMessage("field cannot be empty");
-                    return null;
-                }
+            protected Void call() {
                 out.println("search stock");
                 out.println(stock);
                 String serverReply;
@@ -592,7 +592,8 @@ public class ClientLocal extends Application {
                 }
                 price = new BigDecimal(serverReply);
                 textColorProperty.setValue(Color.GREEN);
-                updateMessage("last trade: $" + serverReply);
+                updateMessage("price: $" + serverReply);
+                searchedForStock = true;
                 showBuyBtn.setValue(true);
                 return null;
             }
@@ -609,17 +610,18 @@ public class ClientLocal extends Application {
     }
     
     public void searchCurrency() {
+        if (currency.equals("")) {
+            homeText2.setFill(Color.RED);
+            homeText2.setText("field cannot be empty");
+            buyBtn.setVisible(false);
+            return;
+        }
         BooleanProperty showBuyBtn = new SimpleBooleanProperty(false);
         buyBtn.visibleProperty().bind(showBuyBtn);
         ObjectProperty textColorProperty = new SimpleObjectProperty();
         Task task = new Task<Void>() {
             @Override
-            protected Void call() {              
-                if (currency.equals("")) {
-                    textColorProperty.setValue(Color.RED);
-                    updateMessage("field cannot be empty");
-                    return null;
-                }
+            protected Void call() {
                 out.println("search currency");
                 out.println(currency);
                 String serverReply; // NEED TO WRITE SERVER SIDE CODE
@@ -632,16 +634,17 @@ public class ClientLocal extends Application {
                 }
                 if (serverReply.equals("fail")) {
                     textColorProperty.setValue(Color.RED);
-                    updateMessage("failed to retrive price");
+                    updateMessage("failed to retrieve exchange rate");
                 }
                 else if (serverReply.equals("N/A")) {
                     textColorProperty.setValue(Color.RED);
-                    updateMessage("unknown currency");
+                    updateMessage("unknown currency pair");
                 }
                 else {
                     price = new BigDecimal(serverReply);
                     textColorProperty.setValue(Color.GREEN);
-                    updateMessage("last trade: $" + serverReply);
+                    updateMessage("1 " + currency.toUpperCase() + " = " + serverReply + " USD");
+                    searchedForStock = false;
                     showBuyBtn.setValue(true);
                 }
                 return null;

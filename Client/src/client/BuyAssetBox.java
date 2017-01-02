@@ -1,15 +1,7 @@
 package client;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.math.BigDecimal;
-import java.util.Locale;
 import javafx.beans.binding.Bindings;
-import javafx.beans.property.IntegerProperty;
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleIntegerProperty;
-import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.*;
 import javafx.concurrent.Task;
 import javafx.geometry.HPos;
 import javafx.geometry.Pos;
@@ -27,25 +19,32 @@ import javafx.stage.Stage;
 import javafx.util.StringConverter;
 import javafx.util.converter.NumberStringConverter;
 
-public class BuyStockBox {
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.math.BigDecimal;
+import java.util.Currency;
+import java.util.Locale;
+
+public class BuyAssetBox {
     PrintWriter out;
     BufferedReader in;
-    String stock, username;
+    String asset, username;
     TextField qField = new TextField();
     Text msg = new Text();
     Text balText, homeText;
     BigDecimalWrapper bal;
 
-    public void display(String stock, BigDecimal price, BigDecimalWrapper bal, Text homeText, String username, PrintWriter out, BufferedReader in) {
+    public void display(boolean isStock, String asset, BigDecimal price, BigDecimalWrapper bal, Text homeText, String username, PrintWriter out, BufferedReader in) {
         this.out = out;
         this.in = in;
-        this.stock = stock;
+        this.asset = asset;
         this.homeText = homeText;
         this.username = username;
         this.bal = bal;
         Stage window = new Stage();
         window.initModality(Modality.APPLICATION_MODAL);
-        window.setTitle("Buy " + stock);
+        window.setTitle("Buy " + asset);
         
         GridPane grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
@@ -63,7 +62,8 @@ public class BuyStockBox {
         
         qField.setFont(Font.font("Calibri", 20));
         qField.setOnAction(e -> {
-            buyStock();
+            if (isStock) buyStock();
+            else buyCurrency();
         });
         
         HBox hbox = new HBox(15);
@@ -72,13 +72,20 @@ public class BuyStockBox {
         GridPane.setHalignment(hbox, HPos.CENTER);
 
         Text costText = new Text();
-        
-        IntegerProperty ip = new SimpleIntegerProperty();
+
         StringConverter<Number> converter = new NumberStringConverter();
-        Bindings.bindBidirectional(qField.textProperty(), ip, converter);    
         Locale locale = Locale.CANADA;
-        costText.textProperty().bind(Bindings.format(locale, "estimated cost: $%,.2f", ip.multiply(price.doubleValue())));
-        
+        if (isStock) {
+            IntegerProperty ip = new SimpleIntegerProperty();
+            Bindings.bindBidirectional(qField.textProperty(), ip, converter);
+            costText.textProperty().bind(Bindings.format(locale, "estimated cost: $%,.2f", ip.multiply(price.doubleValue())));
+        }
+        else {
+            DoubleProperty dp = new SimpleDoubleProperty();
+            Bindings.bindBidirectional(qField.textProperty(), dp, converter);
+            costText.textProperty().bind(Bindings.format(locale, "estimated cost: $%,.2f", dp.multiply(price.doubleValue())));
+        }
+
         costText.setFont(Font.font("Calibri", 20));
         costText.setFill(Color.GREEN);
         grid.add(costText, 0, 2);
@@ -87,7 +94,8 @@ public class BuyStockBox {
         Button buyBtn = new Button("Buy now");
         buyBtn.setFont(Font.font("Calibri", 20));
         buyBtn.setOnAction(e -> {
-            buyStock();
+            if (isStock) buyStock();
+            else buyCurrency();
         });
         grid.add(buyBtn, 0, 3);
         GridPane.setHalignment(buyBtn, HPos.CENTER);
@@ -96,7 +104,7 @@ public class BuyStockBox {
         grid.add(msg, 0, 5);
         GridPane.setHalignment(msg, HPos.CENTER);
           
-        Scene scene = new Scene(grid, 400, 300);
+        Scene scene = new Scene(grid, 500, 300);
         window.setScene(scene);
         window.showAndWait();
     }
@@ -122,7 +130,7 @@ public class BuyStockBox {
                 textColorProperty.setValue(Color.GREEN);
                 updateMessage("loading...");
                 out.println("buy stock");
-                out.println(stock);
+                out.println(asset);
                 out.println(qField.getText());
                 String serverReply = null;
                 try {
@@ -167,5 +175,78 @@ public class BuyStockBox {
                 }
             }
         });   
+    }
+
+    private void buyCurrency() {
+        BigDecimal quantity;
+        try {
+            quantity = new BigDecimal(qField.getText());
+        } catch (NumberFormatException e) {
+            msg.setFill(Color.RED);
+            msg.setText("invalid input");
+            return;
+        }
+        if (quantity.compareTo(new BigDecimal("0")) != 1) {
+            msg.setFill(Color.RED);
+            msg.setText("quantity has to be > 0");
+            return;
+        }
+        if (quantity.scale() > Currency.getInstance(asset.toUpperCase()).getDefaultFractionDigits()) {
+            msg.setFill(Color.RED);
+            msg.setText("too many decimal places");
+            return;
+        }
+
+        ObjectProperty textColorProperty = new SimpleObjectProperty();
+        Task task = new Task<String>() {
+            @Override
+            protected String call() {
+                textColorProperty.setValue(Color.GREEN);
+                updateMessage("loading...");
+                out.println("buy currency");
+                out.println(asset);
+                out.println(qField.getText());
+                String serverReply = null;
+                try {
+                    serverReply = in.readLine();
+                } catch (IOException i) {} // handled later
+                return serverReply;
+            }
+        };
+        msg.fillProperty().bind(textColorProperty);
+        msg.textProperty().bind(task.messageProperty());
+        new Thread(task).start();
+        task.setOnSucceeded(e->{
+            msg.fillProperty().unbind();
+            msg.textProperty().unbind();
+            String serverReply = (String)task.getValue();
+            if (serverReply == null) {
+                msg.setFill(Color.RED);
+                msg.setText("IOException while getting server reply");
+            }
+            else if (serverReply.equals("fail")) {
+                msg.setFill(Color.RED);
+                msg.setText("exchange rate could not be retrieved");
+            }
+            else if (serverReply.equals("1")) {
+                msg.setFill(Color.RED);
+                msg.setText("insufficient balance!");
+            }
+            else if (serverReply.equals("0")) {
+                msg.setFill(Color.GREEN);
+                msg.setText("purchase complete!");
+                try {
+                    BigDecimal newBal = new BigDecimal(in.readLine());
+                    String s2 = String.format("%s $%,.2f", "your balance:", newBal);
+                    balText.setText(s2);
+                    String s3 = String.format("%s %s %s $%,.2f%s", "logged in as", username, "(balance:", newBal, ")");
+                    homeText.setText(s3);
+                    bal.bd = newBal;
+                } catch (IOException i) {
+                    msg.setFill(Color.RED);
+                    msg.setText("IOException while getting server reply");
+                }
+            }
+        });
     }
 }
