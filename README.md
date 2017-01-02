@@ -1,26 +1,26 @@
 # VSCE - Virtual Stock and Currency Exchange
 
 ## Components:  
-1. Stock exchange  
-2. FOREX   
-3. Bitcoin exchange  
+1. Stock exchange
+2. FOREX
+3. Bitcoin/ether exchange
 
 ## Data sources:  
-Stock/FOREX data is retrieved using Yahoo Finance API  
-Bitcoin data is retrieved using QuadrigaCX's API  
+Stock/FOREX data is retrieved using Yahoo Finance API
+Bitcoin/ether data is retrieved using QuadrigaCX's API
 
 ## Data storage:  
-All user data is stored on Amazon DynamoDB  
+All user data is stored on Amazon DynamoDB
 
 ## Completed features:
-- buy/sell stocks
-- view account balance and inventory
-- buy/sell bitcoin
-- buy/sell ether
+- trade stocks
+- view balance and portfolio
+- trade bitcoin
+- trade ether
 - view gains/losses
+- trade currencies
 
 ## Future features:
-- buy/sell currencies
 - view price history (graphs?)
 - search suggestions (?)
 - stop-loss order (?)
