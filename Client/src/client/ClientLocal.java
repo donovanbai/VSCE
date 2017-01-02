@@ -287,7 +287,7 @@ public class ClientLocal extends Application {
         TableColumn<Asset, BigDecimal> quantityCol = new TableColumn<>("Quantity");
         quantityCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
         quantityCol.setStyle(style);
-        quantityCol.setMinWidth(190);
+        quantityCol.setMinWidth(210);
         
         TableColumn<Asset, BigDecimal> totalValCol = new TableColumn<>("Total Value");
         totalValCol.setCellValueFactory(new PropertyValueFactory<>("totalVal"));
