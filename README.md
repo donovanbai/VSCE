@@ -26,7 +26,7 @@ All user data is stored on Amazon DynamoDB
 - stop-loss orders
 
 ## Screenshots
-<img src="/screenshots/login.png" alt="login" style="width:50%;height:50%">
+<img src="/screenshots/login.png" alt="login" width="50%" height="50%">
 ![home](/screenshots/home.png)
 ![buy stock](/screenshots/buy stock.png)
 ![buy currency](/screenshots/buy currency.png)
