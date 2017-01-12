@@ -6,8 +6,8 @@
 3. Bitcoin/ether exchange
 
 ## Data sources:  
-Stock/FOREX data is retrieved using Yahoo Finance API
-Bitcoin/ether data is retrieved using QuadrigaCX's API
+- Stock/FOREX data is retrieved using Yahoo Finance API
+- Bitcoin/ether data is retrieved using QuadrigaCX's API
 
 ## Data storage:  
 All user data is stored on Amazon DynamoDB
