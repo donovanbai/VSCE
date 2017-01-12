@@ -20,7 +20,16 @@ All user data is stored on Amazon DynamoDB
 - view gains/losses
 - trade currencies
 
-## Future features:
-- view price history (graphs?)
-- search suggestions (?)
-- stop-loss order (?)
+## Possible future features:
+- view price graphs
+- search suggestions
+- stop-loss orders
+
+## Screenshots
+![login](/screenshots/login.png)
+![home](/screenshots/home.png)
+![buy stock](/screenshots/buy stock.png)
+![buy currency](/screenshots/buy currency.png)
+![buy bitcoin](/screenshots/buy bitcoin.png)
+![profile](/screenshots/profile.png)
+![sell](/screenshots/sell.png)
