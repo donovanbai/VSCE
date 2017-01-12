@@ -26,7 +26,7 @@ All user data is stored on Amazon DynamoDB
 - stop-loss orders
 
 ## Screenshots
-<p>login screen</p>
+<b>login screen</b>
 <img src="/screenshots/login.png" alt="login" width="40%" height="40%"><br><br>
 <p>home screen</p>
 <img src="/screenshots/home.png" alt="home" width="40%" height="40%"><br><br>
