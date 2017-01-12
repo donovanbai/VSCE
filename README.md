@@ -26,10 +26,10 @@ All user data is stored on Amazon DynamoDB
 - stop-loss orders
 
 ## Screenshots
-<img src="/screenshots/login.png" alt="login" width="50%" height="50%">
-![home](/screenshots/home.png)
-![buy stock](/screenshots/buy stock.png)
-![buy currency](/screenshots/buy currency.png)
-![buy bitcoin](/screenshots/buy bitcoin.png)
-![profile](/screenshots/profile.png)
-![sell](/screenshots/sell.png)
+<img src="/screenshots/login.png" alt="login" width="40%" height="40%">
+<img src="/screenshots/home.png" alt="home" width="40%" height="40%">
+<img src="/screenshots/buy stock.png" alt="buy stock" width="40%" height="40%">
+<img src="/screenshots/buy currency.png" alt="buy currency" width="40%" height="40%">
+<img src="/screenshots/buy bitcoin.png" alt="buy bitcoin" width="40%" height="40%">
+<img src="/screenshots/profile.png" alt="profile" width="40%" height="40%">
+<img src="/screenshots/sell.png" alt="sell" width="40%" height="40%">
